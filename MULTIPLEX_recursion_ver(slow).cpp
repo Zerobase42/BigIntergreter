@@ -1,7 +1,3 @@
-// BigIntergreter On C++
-//multyply : Divide and Conquer (FFT : later.)
-// made by 0B42(ZeroBase42)
-// string ver.
 #include<iostream>
 #include<string>
 #include<algorithm>
@@ -67,55 +63,19 @@ string sumS(string a,string b){
 	return(cmp>0?(na?"-":"")+subS(A,B):(nb?"-":"")+subS(B,A));
 }
 string mulS(string a,string b){
-    bool k=0;
-	if(a[0]=='-')k^=1,a=a.substr(1);
-	if(b[0]=='-')k^=1,b=b.substr(1);
-	if(a=="0"||b=="0")return"0";
-	int n=a.size(),m=b.size();
-    int r[n+m]={0,};
-	for(int i=0;i<m;i++)
-		for(int j=0;j<n;j++){
-			int t=(a[n-1-j]-'0')*(b[m-1-i]-'0');
-			r[n+m-1-i-j]+=t;
-		}
-	for(int i=n+m-1;i>0;i--)r[i-1]+=r[i]/10,r[i]%=10;
-	bool f=0;
-	string s="";
-	for(int i=0;i<n+m;i++){
-		if(!f){
-			if(r[i]!=0)f=1;
-			else if(i==n+m-1)s+="0";
-		}
-		if(f)s+=to_string(r[i]);
-	}
-  return k?"-"+s:s;
-}
-
-string divS(string a,string b){
-	bool n=0;
-	if(a[0]=='-')n^=1,a=a.substr(1);
-	if(b[0]=='-')n^=1,b=b.substr(1);
-	if(b=="0")throw out_of_range("DivideByZeroError");
-	if(absS(a,b)<0)return "0";
-	string r="",t="0";
-	for(char c:a){
-		t+=c;t.erase(0,t.find_first_not_of('0'));
-		if(t=="")t="0";
-		int x=0;
-		while(absS(t,b)>=0){t=subS(t,b);x++;}r+=x+'0';
-	}
-    r.erase(0,r.find_first_not_of('0'));if(r=="")r="0";return n?"-"+r:r;
-}
-string modS(string a,string b){
-    bool n=a[0]=='-';
+    bool n=(a[0]=='-')^(b[0]=='-');
 	if(a[0]=='-')a=a.substr(1);
 	if(b[0]=='-')b=b.substr(1);
-    string t="0";
-    for(char c:a){
-		t+=c;t.erase(0,t.find_first_not_of('0'));
-		if(t=="")t="0";
-		while(absS(t,b)>=0)t=subS(t,b);
-	}
-    if(t=="")t="0";
-	return n && t!="0"?"-"+t:t;
+    if(a=="0"||b=="0")return"0";
+    int N=max(a.size(),b.size());
+	if(N==1)return to_string((a[0]-'0')*(b[0]-'0'));
+    while(a.size()<N)a="0"+a;
+	while(b.size()<N)b="0"+b;
+    int m=N/2;
+    string p=a.substr(0,N-m),q=a.substr(N-m),r=b.substr(0,N-m),s=b.substr(N-m);
+    string pr=mulS(p,r),qs=mulS(q,s),mid=subS(subS(mulS(addS(p,q),addS(r,s)),pr),qs);
+    pr+=string(2*m,'0');mid+=string(m,'0');
+    string res=addS(addS(pr,mid),qs);
+    res.erase(0,res.find_first_not_of('0'));
+    return n?"-"+res:res;
 }
