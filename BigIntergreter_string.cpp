@@ -16,9 +16,12 @@ void erase(string& s){
 void erase0(string& a, string& b){
     erase(a);erase(b);
 }
+bool neg(string s){ // negative : 1, not : 0
+    return !s.empty()&&s[0]=='-';
+}
 
 string maxS(string a,string b){ // return Big number
-	bool na=a[0]=='-',nb=b[0]=='-';
+	bool na=neg(a),nb=neg(b);
     if(na&&!nb)return b;
     if(!na&&nb)return a;
 	string A=na?a.substr(1):a,B=nb?b.substr(1):b;
@@ -36,7 +39,7 @@ int absS(string a,string b){
     if (a==b)return 0;
     return (a>b?1:-1);
 }
-string addS(string a,string b){ // add A,B (0<=A,B)
+string addS(string a,string b){ // add A,B (0<=A,B)(not negative)
     string r;int i=(int)a.size()-1,j=(int)b.size()-1,c=0;
     while(i>=0||j>=0||c){
         c+=(i>=0?a[i--]-'0':0)+(j>=0?b[j--]-'0':0);
@@ -48,7 +51,7 @@ string addS(string a,string b){ // add A,B (0<=A,B)
 
 // ^^ preprocessing code ^^
 string subS(string a,string b){
-    bool na=a[0]=='-',nb=b[0]=='-';
+    bool na=neg(a),nb=neg(b);
     if(na&&nb)return subS(b.substr(1),a.substr(1));
     if(na&&!nb)return "-"+addS(a.substr(1),b);
     if(!na&&nb)return addS(a,b.substr(1));
@@ -73,7 +76,7 @@ string subS(string a,string b){
 	reverse(r.begin(),r.end());return c>0?r:"-"+r;
 }
 string sumS(string a,string b){
-	bool na=a[0]=='-',nb=b[0]=='-';
+	bool na=neg(a),nb=neg(b);
 	string A=na?a.substr(1):a,B=nb?b.substr(1):b;
 	if(!na&&!nb)return addS(A,B);
 	if(na&&nb)return"-"+addS(A,B);
