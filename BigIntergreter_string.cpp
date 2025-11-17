@@ -9,13 +9,13 @@
 #include<string.h>
 using namespace std;
 
-void trimLeadingZeros(string& s){
+void erase0_1(string& s){
     int p=s.find_first_not_of('0');
     if(p==string::npos)s="0";
     else s.erase(0,p);
 }
 void erase0(string& a, string& b){
-    trimLeadingZeros(a);trimLeadingZeros(b);
+    erase0_1(a);erase0_1(b);
 }
 bool neg(string s){ // negative : 1, not : 0
     return !s.empty()&&s[0]=='-';
@@ -85,9 +85,9 @@ string sumS(string a,string b){
 	return(cmp>0?(na?"-":"")+subS(A,B):(nb?"-":"")+subS(B,A));
 }
 string mulS(string a,string b){
-    bool k=0;
-	if(a[0]=='-')k^=1,a=a.substr(1);
-	if(b[0]=='-')k^=1,b=b.substr(1);
+    bool k=neg(a)^neg(b);
+	if(a[0]=='-')a=a.substr(1);
+	if(b[0]=='-')b=b.substr(1);
 	if(a=="0"||b=="0")return"0";
 	int n=a.size(),m=b.size();
     int r[n+m];
@@ -118,22 +118,23 @@ string divS(string a,string b){
 	if(absS(a,b)<0)return "0";
 	string r="",t="0";
 	for(char c:a){
-		t+=c;t.erase(0,t.find_first_not_of('0'));
+		t+=c;erase0_1(t);
 		if(t=="")t="0";
 		int x=0;
-		while(absS(t,b)>=0){t=subS(t,b);x++;}r+=x+'0';
+		while(absS(t,b)+1)t=subS(t,b),x++;
+        r+=x+'0';
 	}
-    r.erase(0,r.find_first_not_of('0'));
+    erase0_1(r);
     if(r=="")r="0";
     return n?"-"+r:r;
 }
 string modS(string a,string b){
-    bool n=a[0]=='-';
+    bool n=neg(a)^neg(b);
 	if(a[0]=='-')a=a.substr(1);
 	if(b[0]=='-')b=b.substr(1);
     string t="0";
     for(char c:a){
-		t+=c;t.erase(0,t.find_first_not_of('0'));
+		t+=c;erase0_1(t);
 		if(t=="")t="0";
 		while(absS(t,b)>=0)t=subS(t,b);
 	}
