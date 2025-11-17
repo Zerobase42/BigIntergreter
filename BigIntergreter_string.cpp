@@ -9,13 +9,13 @@
 #include<string.h>
 using namespace std;
 
-void erase(string& s){
+void trimLeadingZeros(string& s){
     int p=s.find_first_not_of('0');
     if(p==string::npos)s="0";
     else s.erase(0,p);
 }
 void erase0(string& a, string& b){
-    erase(a);erase(b);
+    trimLeadingZeros(a);trimLeadingZeros(b);
 }
 bool neg(string s){ // negative : 1, not : 0
     return !s.empty()&&s[0]=='-';
@@ -109,7 +109,7 @@ string mulS(string a,string b){
 	}
   return k?"-"+s:s;
 }
-/* // need to re-pare
+// need to re-pare
 string divS(string a,string b){
 	bool n=0;
 	if(a[0]=='-')n^=1,a=a.substr(1);
@@ -140,4 +140,3 @@ string modS(string a,string b){
     if(t=="")t="0";
 	return n && t!="0"?"-"+t:t;
 }
-*/
