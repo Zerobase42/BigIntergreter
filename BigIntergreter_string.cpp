@@ -21,7 +21,7 @@ string maxS(string a,string b){ // return Big number
 	erase0(A,B);
     if(A.empty())A="0";if(B.empty())B="0";
     if(A.size()!=B.size())return(A.size()>B.size())^(na)?a:b;
-    if(A!=B)return A>B^na?a:b;
+    if(A!=B)return(A>B)^na?a:b;
     return a;
 }
 int absS(string a,string b){
