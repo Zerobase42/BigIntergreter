@@ -6,6 +6,7 @@
 #include<string>
 #include<algorithm>
 #include<vector>
+#include<string.h>
 using namespace std;
 
 void erase(string& s){
