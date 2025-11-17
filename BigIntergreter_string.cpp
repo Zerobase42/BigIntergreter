@@ -8,7 +8,7 @@
 #include<vector>
 using namespace std;
 
-void erase0(string* a, string* b){
+void erase0(string& a, string& b){
     a.erase(0,a.find_first_not_of('0'));
     b.erase(0,b.find_first_not_of('0'));
 }
@@ -18,7 +18,7 @@ string maxS(string a,string b){ // return Big number
     if(na&&!nb)return b;
     if(!na&&nb)return a;
 	string A=na?a.substr(1):a,B=nb?b.substr(1):b;
-	erase0(a,b);
+	erase0(A,B);
     if(A.empty())A="0";if(B.empty())B="0";
     if(A.size()!=B.size())return(A.size()>B.size())^(na)?a:b;
     if(A!=B)return A>B^na?a:b;
@@ -82,7 +82,8 @@ string mulS(string a,string b){
 	if(b[0]=='-')k^=1,b=b.substr(1);
 	if(a=="0"||b=="0")return"0";
 	int n=a.size(),m=b.size();
-    vector<int> r[n+m]={0,};
+    int r[n+m];
+    memset(r,0,sizeof(int)*(n+m));
 	for(int i=0;i<m;i++)
 		for(int j=0;j<n;j++){
 			int t=(a[n-1-j]-'0')*(b[m-1-i]-'0');
