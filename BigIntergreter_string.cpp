@@ -8,9 +8,13 @@
 #include<vector>
 using namespace std;
 
+void erase(string& s){
+    int p=s.find_first_not_of('0');
+    if(p==string::npos)s="0";
+    else s.erase(0,p);
+}
 void erase0(string& a, string& b){
-    a.erase(0,a.find_first_not_of('0'));
-    b.erase(0,b.find_first_not_of('0'));
+    erase(a);erase(b);
 }
 
 string maxS(string a,string b){ // return Big number
