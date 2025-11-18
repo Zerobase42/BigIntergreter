@@ -109,36 +109,28 @@ string mulS(string a,string b){
 	}
   return k?"-"+s:s;
 }
-// need to re-pare
 string divS(string a,string b){
-	bool n=0;
-	if(a[0]=='-')n^=1,a=a.substr(1);
-	if(b[0]=='-')n^=1,b=b.substr(1);
+	bool na=neg(a),nb=neg(b);
+	if(na)a=a.substr(1);
+	if(nb)b=b.substr(1);
 	if(b=="0")throw out_of_range("DivideByZeroError");
 	if(absS(a,b)<0)return "0";
-	string r="",t="0";
+	string q="",t="0";
 	for(char c:a){
 		t+=c;erase0_1(t);
-		if(t=="")t="0";
 		int x=0;
-		while(absS(t,b)+1)t=subS(t,b),x++;
-        r+=x+'0';
+		while(true){
+            string nxt=subS(t,b);
+            if(neg(nxt))break;
+            t=nxt;x++;
+        }
+        q+='0'+x;
 	}
     erase0_1(r);
     if(r=="")r="0";
-    return n?"-"+r:r;
+	if(na&&!nb)r=subS(r,"1");
+    return na^nb?"-"+r:r;
 }
 string modS(string a,string b){
-    bool n=neg(a)^neg(b);
-	if(a[0]=='-')a=a.substr(1);
-	if(b[0]=='-')b=b.substr(1);
-    string t="0";
-    for(char c:a){
-		t+=c;erase0_1(t);
-		if(t=="")t="0";
-		while(absS(t,b)>=0)t=subS(t,b);
-	}
-    if(t=="")t="0";
-	return n && t!="0"?"-"+t:t;
+    return subS(a,mulS(b,divS(a,b)));
 }
-// end!!!!
