@@ -7,17 +7,18 @@
 #include<algorithm>
 #include<vector>
 #include<string.h>
+const bool DIVIDE_METHOD=true; // true: 0, false: -inf
 using namespace std;
 
 void erase0_1(string& s){
     int p=s.find_first_not_of('0');
-    if(p==string::npos)s="0";
+    if(p==(int)string::npos)s="0";
     else s.erase(0,p);
 }
-void erase0(string& a, string& b){
+inline void erase0(string& a, string& b){
     erase0_1(a);erase0_1(b);
 }
-bool neg(string s){ // negative : 1, not : 0
+inline bool neg(string s){ // negative : 1, not : 0
     return !s.empty()&&s[0]=='-';
 }
 
@@ -27,7 +28,8 @@ string maxS(string a,string b){ // return Big number
     if(!na&&nb)return a;
 	string A=na?a.substr(1):a,B=nb?b.substr(1):b;
 	erase0(A,B);
-    if(A.empty())A="0";if(B.empty())B="0";
+    if(A.empty())A="0";
+  if(B.empty())B="0";
     if(A.size()!=B.size())return(A.size()>B.size())^(na)?a:b;
     if(A!=B)return(A>B)^na?a:b;
     return a;
@@ -62,15 +64,17 @@ string subS(string a,string b){
     if(c>0){
 		int i=a.size()-1,j=b.size()-1,cc=0;
 		while(i>=0){
-			int x=a[i--]-'0'-(j>=0?b[j--]-'0':0)-cc;
-			cc=x<0?1:0;if(x<0)x+=10;r+=x+'0';
+			int x=a[i--]-'0'-(j>=0?b[j--]-'0':0)-cc;cc=x<0?1:0;
+            if(x<0)x+=10;
+          r+=x+'0';
 		}
 	}
     else{
 		int i=b.size()-1,j=a.size()-1,cc=0;
 		while(i>=0){
 			int x=b[i--]-'0'-(j>=0?a[j--]-'0':0)-cc;cc=x<0?1:0;
-			if(x<0)x+=10;r+=x+'0';
+			if(x<0)x+=10;
+            r+=x+'0';
 		}
 	}
 	while(r.size()>1&&r.back()=='0')r.pop_back();
@@ -105,16 +109,20 @@ string mulS(string a,string b){
 			if(r[i]!=0)f=1;
 			else if(i==n+m-1)s+="0";
 		}
-		if(f)s+=to_string(r[i]);
+		if(f)s+=r[i]+'0';
 	}
   return k?"-"+s:s;
 }
-string divS(string a,string b){
+inline string check_modS(string A,string B,string q){
+    return subS(A,mulS(B,q));
+}
+string divS(const string A,const string B){
+    string a=A,b=B;
 	bool na=neg(a),nb=neg(b);
 	if(na)a=a.substr(1);
 	if(nb)b=b.substr(1);
+    if(a=="0")return "0";
 	if(b=="0")throw out_of_range("DivideByZeroError");
-	if(absS(a,b)<0)return "0";
 	string q="",t="0";
 	for(char c:a){
 		t+=c;erase0_1(t);
@@ -124,12 +132,21 @@ string divS(string a,string b){
             if(neg(nxt))break;
             t=nxt;x++;
         }
-        q+='0'+x;
+        q+=x+'0';
 	}
-    erase0_1(r);
-    if(r=="")r="0";
-	if(na&&!nb)r=subS(r,"1");
-    return na^nb?"-"+r:r;
+    erase0_1(q);
+    if(q=="")q="0";
+    if(na^nb)q="-"+q;
+    if(DIVIDE_METHOD){
+        if(neg(check_modS(A,B,q))){
+    	    if(na^nb)q=subS(q,"1");
+            else q=sumS(q,"1");
+        }
+    }else{
+        if(check_modS(A,B,q)=="0")return q=="-0"?"0":q;
+        if(na^nb)q=subS(q,"1");
+    }
+    return q=="-0"?"0":q;
 }
 string modS(string a,string b){
     return subS(a,mulS(b,divS(a,b)));
