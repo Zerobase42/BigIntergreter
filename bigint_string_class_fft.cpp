@@ -81,6 +81,7 @@ class big_int{
             return(cmp>0?(na?"-":"")+subS(A,B):(nb?"-":"")+subS(B,A));
         }
         static void fft(vector<complex<double>> &a,bool inv=false){
+            const double pi=acos(-1);
             int n=a.size();
             for (int k = 0; k < n; ++k) {
                 int b{};
