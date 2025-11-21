@@ -174,6 +174,18 @@ class big_int{
         bool operator>(const big_int& n)const{
             return n<*this;
         };
+        bool operator==(const big_int& n)const{
+            return number==n.number;
+        }
+        bool operator<=(const big_int& n)const{
+            return number<n.number||number==n.number;
+        }
+        bool operator>=(const big_int& n)const{
+            return number>n.number||number==n.number;
+        }
+        bool operator!=(const big_int& n)const{
+            return !(number==n.number);
+        }
         big_int operator+(const big_int& n)const{
             return big_int(sumS(this->number,n.number));
         }
