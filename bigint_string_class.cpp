@@ -199,6 +199,24 @@ class big_int{
             this->number=strip(divS(this->number,n.number));
             return *this;
         }
+        big_int& operator++(){
+            *this+=big_int("1");
+            return *this;
+        }
+        big_int operator++(int){
+            big_int tmp=*this;
+            ++(*this);
+            return tmp;
+        }
+        big_int& operator--(){
+            *this-=big_int("1");
+            return *this;
+        }
+        big_int operator--(int){
+            big_int tmp=*this;
+            --(*this);
+            return tmp;
+        }
 };
 
 int main(){
