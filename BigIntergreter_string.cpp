@@ -2,11 +2,11 @@
 //multyply : Divide and Conquer (FFT : later.)
 // made by 0B42(ZeroBase42)
 // string ver.
-#include<iostream>
-#include<string>
-#include<algorithm>
-#include<vector>
-#include<string.h>
+#include <iostream>
+#include <string>
+#include <algorithm>
+#include <cstring>
+#include <stdexcept>
 const bool DIVIDE_METHOD=true; // true: 0, false: -inf
 using namespace std;
 
@@ -28,22 +28,21 @@ string maxS(string a,string b){ // return Big number
     if(!na&&nb)return a;
 	string A=na?a.substr(1):a,B=nb?b.substr(1):b;
 	erase0(A,B);
-    if(A.empty())A="0";
-  if(B.empty())B="0";
-    if(A.size()!=B.size())return(A.size()>B.size())^(na)?a:b;
+    if(A.size()!=B.size())return(A.size()>B.size())^na?a:b;
     if(A!=B)return(A>B)^na?a:b;
     return a;
 }
 int absS(string a,string b){
 	erase0(a,b);
     // A>B :1, A==B:0,A<B: -1
-	if (a.size()>b.size())return 1;
-    if (a.size()<b.size())return -1;
-    if (a==b)return 0;
-    return (a>b?1:-1);
+	if(a.size()>b.size())return 1;
+    if(a.size()<b.size())return -1;
+    if(a==b)return 0;
+    return(a>b?1:-1);
 }
-string addS(string a,string b){ // add A,B (0<=A,B)(not negative)
-    string r;int i=(int)a.size()-1,j=(int)b.size()-1,c=0;
+string addS(const string& a,const string& b){ // add A,B (0<=A,B)(not negative)
+    string r;
+	int i=(int)a.size()-1,j=(int)b.size()-1,c=0;
     while(i>=0||j>=0||c){
         c+=(i>=0?a[i--]-'0':0)+(j>=0?b[j--]-'0':0);
         r+=c%10+'0';c/=10;
@@ -53,7 +52,7 @@ string addS(string a,string b){ // add A,B (0<=A,B)(not negative)
 }
 
 // ^^ preprocessing code ^^
-string subS(string a,string b){
+string subS(const string& a,const string& b){
     bool na=neg(a),nb=neg(b);
     if(na&&nb)return subS(b.substr(1),a.substr(1));
     if(na&&!nb)return "-"+addS(a.substr(1),b);
@@ -83,12 +82,12 @@ string subS(string a,string b){
 string sumS(string a,string b){
 	bool na=neg(a),nb=neg(b);
 	string A=na?a.substr(1):a,B=nb?b.substr(1):b;
-	if(!na&&!nb)return addS(A,B);
-	if(na&&nb)return"-"+addS(A,B);
+	if(!(na^nb))return na?"-"+addS(A,B):addS(A,B);
 	int cmp=absS(A,B);if(!cmp)return"0";
 	return(cmp>0?(na?"-":"")+subS(A,B):(nb?"-":"")+subS(B,A));
 }
-string mulS(string a,string b){
+string mulS(const string& A,const string& B){
+	string a=A,b=B;
     bool k=neg(a)^neg(b);
 	if(a[0]=='-')a=a.substr(1);
 	if(b[0]=='-')b=b.substr(1);
@@ -108,15 +107,14 @@ string mulS(string a,string b){
 		if(!f){
 			if(r[i]!=0)f=1;
 			else if(i==n+m-1)s+="0";
-		}
-		if(f)s+=r[i]+'0';
+		}else s+=r[i]+'0';
 	}
   return k?"-"+s:s;
 }
-inline string check_modS(string A,string B,string q){
+inline string check_modS(const string& A,const string& B,string q){
     return subS(A,mulS(B,q));
 }
-string divS(const string A,const string B){
+string divS(const string& A,const string& B){
     string a=A,b=B;
 	bool na=neg(a),nb=neg(b);
 	if(na)a=a.substr(1);
@@ -135,7 +133,6 @@ string divS(const string A,const string B){
         q+=x+'0';
 	}
     erase0_1(q);
-    if(q=="")q="0";
     if(na^nb)q="-"+q;
     if(DIVIDE_METHOD){
         if(neg(check_modS(A,B,q))){
@@ -150,4 +147,7 @@ string divS(const string A,const string B){
 }
 string modS(string a,string b){
     return subS(a,mulS(b,divS(a,b)));
+}
+int main(){
+	return 0;
 }
