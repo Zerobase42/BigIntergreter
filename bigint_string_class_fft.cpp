@@ -120,7 +120,7 @@ class big_int{
                 }
             }
         }
-        string mulS(const string& a,const string& b){
+        static string mulS(const string& a,const string& b){
             vector<string>s={a,b};
             vector<vector<complex<double>>>f(2,vector<complex<double>>(1<<19));
             for(int i=0;i<2;++i)
@@ -145,7 +145,7 @@ class big_int{
             for(int i=A.size()-1;i>=0;--i){
                 if(flag){
                     char buf[10];
-                    sprintf(buf,"%04ld",A[i]);
+                    sprintf(buf,"%04lld",(long long)A[i]);
                     res+=buf;
                 }else if(A[i]>0||i==0){
                     res+=to_string(A[i]);
