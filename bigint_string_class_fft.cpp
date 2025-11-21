@@ -1,6 +1,9 @@
 #include <bits/stdc++.h>
-#define DIVIDE_METHOD true
 using namespace std;
+
+#ifndef DIVIDE_METHOD
+#define DIVIDE_METHOD true
+#endif
 class big_int{
     private:
         string number;
