@@ -122,7 +122,10 @@ class big_int{
         }
         static string mulS(const string& a,const string& b){
             vector<string>s={a,b};
-            vector<vector<complex<double>>>f(2,vector<complex<double>>(1<<19));
+            int n1=(a.size()+3)/4,n2=(b.size()+3)/4;
+            int n=1;
+            while(n<n1+n2)n<<=1;
+            vector<vector<complex<double>>> f(2,vector<complex<double>>(n));
             for(int i=0;i<2;++i)
                 for(int j=s[i].size()-1,k=0;j>=0;--j){
                     k=10*k+s[i][s[i].size()-j-1]-'0';
