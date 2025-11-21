@@ -187,17 +187,6 @@ class big_int{
         static string modS(string a,string b){
             return subS(a,mulS(b,divS(a,b)));
         }
-        static string pow2S(string k){
-            // 빠른 거듭제곱: res = 2^k
-            string res="1";
-            string base="2";
-            while(!neg(subS("0",k))){
-                if(k&1)res=mulS(res,base);
-                base=mulS(base,base);
-                k>>=1;
-            }
-            return res;
-        }
 
     public:
         big_int():number("0"){}
@@ -209,7 +198,9 @@ class big_int{
         big_int(long long x) {
             number = to_string(x);
         }
-        string str()const{return number;}
+        string str()const{
+            return number;
+        }
         friend istream& operator>>(istream& in, big_int& n){
             string s;
             in>>s;
