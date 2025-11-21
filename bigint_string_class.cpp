@@ -144,6 +144,12 @@ class big_int{
         big_int():number("0"){}
         big_int(const string& s):number(strip(s)){}
         big_int(const char* s):number(strip(string(s))){}
+        big_int(int x) {
+            number=to_string(x);
+        }
+        big_int(long long x) {
+            number = to_string(x);
+        }
         string str()const{return number;}
         friend istream& operator>>(istream& in, big_int& n){
             string s;
