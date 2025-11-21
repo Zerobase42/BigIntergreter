@@ -1,10 +1,6 @@
-#include <iostream>
-#include <string>
-#include <algorithm>
-#include <cstring>
-#include <stdexcept>
+#include <bits/stdc++.h>
+#define DIVIDE_METHOD true
 using namespace std;
-bool DIVIDE_METHOD=true;
 class big_int{
     private:
         string number;
@@ -102,7 +98,8 @@ class big_int{
                 if(!f){
                     if(r[i]!=0)f=1;
                     else if(i==n+m-1)s+="0";
-                }else s+=r[i]+'0';
+                }
+                if(f)s+=r[i]+'0';
             }
         return k?"-"+s:s;
         }
@@ -148,7 +145,16 @@ class big_int{
         big_int(const string& s):number(strip(s)){}
         big_int(const char* s):number(strip(string(s))){}
         string str()const{return number;}
-        void Show()const{cout<<number;};
+        friend istream& operator>>(istream& in, big_int& n){
+            string s;
+            in>>s;
+            n=big_int(s);
+            return in;
+        }
+        friend ostream& operator<<(ostream& out,const big_int& n){
+            out<<n.str();
+            return out;
+        }
         bool operator<(const big_int& n)const{
             bool na=neg(number),nb=neg(n.number);
             if (na&&!nb)return true;
@@ -187,6 +193,10 @@ class big_int{
         }
         big_int operator*=(const big_int& n){
             this->number=strip(mulS(this->number,n.number));
+            return *this;
+        }
+        big_int operator/=(const big_int& n){
+            this->number=strip(divS(this->number,n.number));
             return *this;
         }
 };
