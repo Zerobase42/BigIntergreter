@@ -99,7 +99,7 @@ class big_int{
             if (r.empty()) {
                 r.resize(n / 2);
                 ir.resize(n / 2);
-                for (int i = 0; i < r.size(); ++i) {
+                for (int i = 0; i <(int)r.size(); ++i) {
                     r[i] = complex<double>(cos(2 * pi / n * i), sin(2 * pi / n * i));
                     ir[i] = conj(r[i]);
                 }
@@ -135,10 +135,10 @@ class big_int{
                     }
                 }
             fft(f[0]);fft(f[1]);
-            for (int i=0;i<f[0].size();++i)f[0][i]*=f[1][i];
+            for (int i=0;i<(int)f[0].size();++i)f[0][i]*=f[1][i];
             fft(f[0],true);
             vector<long long> A(f[0].size());
-            for (int i=0;i<A.size()-1;++i){
+            for (int i=0;i<(int)A.size()-1;++i){
                 A[i]+=lround(f[0][i].real());
                 A[i+1]+=A[i]/10000;
                 A[i]%=10000;
