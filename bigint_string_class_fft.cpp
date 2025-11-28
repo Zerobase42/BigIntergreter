@@ -7,6 +7,7 @@ using namespace std;
 class big_int{
     private:
         string number;
+        template<typename T>
         static void erase0_1(string& s){
             int p=s.find_first_not_of('0');
             if(p==(int)string::npos)s="0";
@@ -80,82 +81,82 @@ class big_int{
             int cmp=absS(A,B);if(!cmp)return"0";
             return(cmp>0?(na?"-":"")+subS(A,B):(nb?"-":"")+subS(B,A));
         }
-        static void fft(vector<complex<double>> &a,bool inv=false){
-            const double pi=acos(-1);
-            int n=a.size();
-            for (int k = 0; k < n; ++k) {
-                int b{};
-                for (int z = 1; z < n; z *= 2) {
-                    b *= 2;
-                    if (k & z) {
-                        ++b;
-                    }
-                }
-                if (k < b) {
-                    swap(a[k], a[b]);
+        static void fft(vector<complex<double>>&a){
+            int n=(int)a.size(),L=31-__builtin_clz(n);
+            static vector<complex<long double>>R(2,1);
+            static vector<complex<double>>rt(2,1);//(^10% faster if double)
+            for(static int k=2;k<n;k*=2){
+                R.resize(n);
+                rt.resize(n);
+                auto x=polar(1.0L, acos(-1.0L)/k);
+                for(int i=k;i<k+k;i++)rt[i]=R[i]=i&1?R[i/2]*x:R[i/2];
+            }
+            vector<int>rev(n);
+            for(int i=0;i<n;i++)rev[i]=(rev[i/2]|(i&1)<<L)/2;
+            for(int i=0;i<n;i++)if(i<rev[i])swap(a[i], a[rev[i]]);
+            for(int k=1;k<n;k*=2){
+                for(int i=0;i<n;i+=2*k)for(int j=0;j<k;j++){
+                    //complex<double>z=rt[j+k]*a[i+j+k];//(25% faster if hand-rolled)///include-line
+                    auto x=(double*)&rt[j+k],y=(double*)&a[i+j+k];            ///exclude-line
+                    complex<double>z(x[0]*y[0]-x[1]*y[1],x[0]*y[1]+x[1]*y[0]);///exclude-line
+                    a[i+j+k]=a[i+j]-z;
+                    a[i+j]+=z;
                 }
             }
-            static vector<complex<double>> r, ir;
-            if (r.empty()) {
-                r.resize(n / 2);
-                ir.resize(n / 2);
-                for (int i = 0; i <(int)r.size(); ++i) {
-                    r[i] = complex<double>(cos(2 * pi / n * i), sin(2 * pi / n * i));
-                    ir[i] = conj(r[i]);
-                }
-            }
-            for (int m = 2; m <= n; m *= 2) {
-                for (int k = 0; k < n; k += m) {
-                    for (int j = 0; j < m / 2; ++j) {
-                        complex<double> u = a[k + j];
-                        complex<double> t = a[k + j + m / 2] * (inv ? ir[n / m * j] : r[n / m * j]);
-                        a[k + j] = u + t;
-                        a[k + j + m / 2] = u - t;
-                    }
-                }
-            }
-            if (inv) {
-                for (int i = 0; i < n; ++i) {
-                    a[i] /= n;
-                }
-            }
+        }    
+        static vector<T>conv(const vector<T>&a, const vector<T>&b){
+        	if(a.empty()||b.empty())return {};
+        	vector<T>res((int)a.size()+(int)b.size()-1);
+        	int L=32-__builtin_clz((int)res.size()), n=1<<L;
+        	vector<complex<double>>in(n), out(n);
+        	copy(a.begin(),a.end(),begin(in));
+        	for(int i=0;i<(int)b.size();i++)in[i].imag(b[i]);
+        	fft(in);
+        	for(complex<double>&x:in)x*=x;
+        	for(int i=0;i<n;i++)out[i]=in[-i&(n-1)]-conj(in[i]);
+        	fft(out);
+        	for(int i=0;i<(int)res.size();i++){
+        		res[i]=static_cast<T>(imag(out[i])/(4*n)+((is_integral_v<T>)?(imag(out[i])>0?0.5:-0.5):0));
+        	}
+        	return res;
         }
-        static string mulS(const string& a,const string& b){
-            vector<string>s={a,b};
-            int n1=(a.size()+3)/4,n2=(b.size()+3)/4;
-            int n=1;
-            while(n<n1+n2)n<<=1;
-            vector<vector<complex<double>>> f(2,vector<complex<double>>(n));
-            for(int i=0;i<2;++i)
-                for(int j=s[i].size()-1,k=0;j>=0;--j){
-                    k=10*k+s[i][s[i].size()-j-1]-'0';
-                    if (j%4==0){
-                        f[i][j / 4]=k;
-                        k=0;
-                    }
-                }
-            fft(f[0]);fft(f[1]);
-            for (int i=0;i<(int)f[0].size();++i)f[0][i]*=f[1][i];
-            fft(f[0],true);
-            vector<long long> A(f[0].size());
-            for (int i=0;i<(int)A.size()-1;++i){
-                A[i]+=lround(f[0][i].real());
-                A[i+1]+=A[i]/10000;
-                A[i]%=10000;
-            }
-            bool flag=false;
-            string res;
-            for(int i=A.size()-1;i>=0;--i){
-                if(flag){
-                    char buf[10];
-                    sprintf(buf,"%04lld",(long long)A[i]);
-                    res+=buf;
-                }else if(A[i]>0||i==0){
-                    res+=to_string(A[i]);
-                    flag=true;
-                }
-            }
-            return res;
+        static string mulS(const string& A,const string& B){
+        	int BASE=1000,DIG=3; // BASE=10^DIG
+        
+        	bool na=neg(A),nb=neg(B);
+        	string sA=na?A.substr(1):A,sB=nb?B.substr(1):B;
+        	if(sA=="0"||sB=="0")return "0";
+        	vector<int>a,b;
+        	for(int i=A.size();i>0;i-=DIG){
+        		int x=0,l=max(0,i-DIG);
+        		for(int j=l;j<i;j++)x=x*10+A[j]-'0';
+        		a.push_back(x);
+        	}
+        	for(int i=sB.size()-1;i>=0;i--){
+        		int x=0,l=max(0,i-DIG);
+        		for(int j=l;j<i;j++)x=x*10+B[j]-'0';
+        		b.push_back(x);
+        	}
+        	vector<long long>A64(a.begin(),a.end()),B64(b.begin(),b.end());
+        	vector<long long>c=conv(A64,B64);
+        	
+        	long long int carry=0;
+        	for(size_t i=0;i<(int)c.size();i++){
+        		long long x=c[i]+carry;
+        		c[i]=x/BASE;carry=x/BASE;
+        	}
+        	while(carry){
+        		c.push_back(carry%BASE);
+        		carry/=BASE;
+        	}
+        	while(c.size()>1&&c.back()==0)c.pop_back();
+        	string res=to_string(c.back());
+        	char buf[20];
+        	for(int i=(int)c.size()-2;i>=0;i--){
+        		snprintf(buf,sizeof(buf),"%0*d",DIG,(int)c[i]);
+        		res+=buf;
+        	}
+        	return res;
         }
         static string check_modS(const string& A,const string& B,string q){
             return subS(A,mulS(B,q));
