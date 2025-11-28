@@ -1,95 +1,43 @@
 #include <bits/stdc++.h>
-
 using namespace std;
-
-using ll = long long;
-using cd = complex<double>;
-
-const double pi = acos(-1);
-
-void fft(vector<complex<double>> &a, bool inv = false) {
-	int n = a.size();
-	for (int k = 0; k < n; ++k) {
-		int b{};
-		for (int z = 1; z < n; z *= 2) {
-			b *= 2;
-			if (k & z) {
-				++b;
-			}
-		}
-		if (k < b) {
-			swap(a[k], a[b]);
-		}
+#define sz(v) ((int)(v).size())
+#define all(v) (v).begin(), (v).end()
+void fft(vector<complex<double>>& a){
+	int n = sz(a), L = 31 - __builtin_clz(n);
+	static vector<complex<long double>> R(2, 1);
+	static vector<complex<double>> rt(2, 1);  // (^ 10% faster if double)
+	for (static int k = 2; k < n; k *= 2) {
+		R.resize(n); rt.resize(n);
+		auto x = polar(1.0L, acos(-1.0L) / k);
+		for (int i=k;i<k+k;i++) rt[i] = R[i] = i&1 ? R[i/2] * x : R[i/2];
 	}
-	static vector<complex<double>> r, ir;
-	if (r.empty()) {
-		r.resize(n / 2);
-		ir.resize(n / 2);
-		for (int i = 0; i < r.size(); ++i) {
-			r[i] = complex<double>(cos(2 * pi / n * i), sin(2 * pi / n * i));
-			ir[i] = conj(r[i]);
-		}
-	}
-	for (int m = 2; m <= n; m *= 2) {
-		for (int k = 0; k < n; k += m) {
-			for (int j = 0; j < m / 2; ++j) {
-				complex<double> u = a[k + j];
-				complex<double> t = a[k + j + m / 2] * (inv ? ir[n / m * j] : r[n / m * j]);
-				a[k + j] = u + t;
-				a[k + j + m / 2] = u - t;
-			}
-		}
-	}
-	if (inv) {
-		for (int i = 0; i < n; ++i) {
-			a[i] /= n;
+	vector<int> rev(n);
+	for (int i=0;i<n;i++) rev[i] = (rev[i / 2] | (i & 1) << L) / 2;
+	for (int i=0;i<n;i++) if (i < rev[i]) swap(a[i], a[rev[i]]);
+	for (int k = 1; k < n; k *= 2){
+		for (int i = 0; i < n; i += 2 * k) for (int j=0;j<k;j++) {
+			// complex<double> z = rt[j+k] * a[i+j+k]; // (25% faster if hand-rolled)  /// include-line
+			auto x = (double *)&rt[j+k], y = (double *)&a[i+j+k];                /// exclude-line
+			complex<double> z(x[0]*y[0] - x[1]*y[1], x[0]*y[1] + x[1]*y[0]);           /// exclude-line
+			a[i + j + k] = a[i + j] - z;
+			a[i + j] += z;
 		}
 	}
 }
-
-string multyply(string a,string b){
-    vector<string>s={a,b};
-    vector<vector<complex<double>>>f(2,vector<complex<double>>(1<<19));
-	for(int i=0;i<2;++i){
-		for(int j=s[i].size()-1,k=0;j>=0;--j){
-			k=10*k+s[i][s[i].size()-j-1]-'0';
-			if (j%4==0){
-				f[i][j / 4]=k;
-				k=0;
-			}
-		}
+template <typename T>
+vector<T> conv(const vector<T>& a, const vector<T>& b) {
+	if (a.empty() || b.empty()) return {};
+	vector<T> res(sz(a) + sz(b) - 1);
+	int L = 32 - __builtin_clz(sz(res)), n = 1 << L;
+	vector<complex<double>> in(n), out(n);
+	copy(all(a), begin(in));
+	for (int i=0;i<sz(b);i++) in[i].imag(b[i]);
+	fft(in);
+	for (complex<double>& x: in) x *= x;
+	for (int i=0;i<n;i++) out[i] = in[-i & (n - 1)] - conj(in[i]);
+	fft(out);
+	for (int i=0;i<sz(res);i++){
+		res[i] = static_cast<T>(imag(out[i]) / (4 * n) + (is_integral_v<T> ? (imag(out[i]) > 0 ? 0.5 : -0.5) : 0));
 	}
-	fft(f[0]);fft(f[1]);
-	for (int i=0;i<f[0].size();++i) {
-		f[0][i]*=f[1][i];
-	}
-	fft(f[0],true);
-	vector<long long> A(f[0].size());
-	for (int i=0;i<A.size()-1;++i) {
-		A[i]+=lround(f[0][i].real());
-		A[i+1]+=A[i]/10000;
-		A[i]%=10000;
-	}
-	bool flag=false;
-    string res;
-	for(int i=A.size()-1;i>=0;--i){
-		if (flag) {
-            char buf[10];
-            sprintf(buf,"%04ld",A[i]);
-            res+=buf;
-		}else if(A[i]>0||i==0){
-			res+=to_string(A[i]);
-			flag=true;
-		}
-	}
-    return res;
-}
-
-int main() {
-	ios::sync_with_stdio(false);
-	cin.tie(nullptr);
-    string a,b;
-	cin >> a>>b;
-	cout << multyply(a,b) << "\n";
-	return 0;
+	return res;
 }
