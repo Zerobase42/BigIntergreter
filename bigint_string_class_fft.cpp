@@ -7,7 +7,6 @@ using namespace std;
 class big_int{
     private:
         string number;
-        template<typename T>
         static void erase0_1(string& s){
             int p=s.find_first_not_of('0');
             if(p==(int)string::npos)s="0";
@@ -104,6 +103,7 @@ class big_int{
                 }
             }
         }    
+        template<typename T>
         static vector<T>conv(const vector<T>&a, const vector<T>&b){
         	if(a.empty()||b.empty())return {};
         	vector<T>res((int)a.size()+(int)b.size()-1);
@@ -127,12 +127,12 @@ class big_int{
         	string sA=na?A.substr(1):A,sB=nb?B.substr(1):B;
         	if(sA=="0"||sB=="0")return "0";
         	vector<int>a,b;
-        	for(int i=A.size();i>0;i-=DIG){
+        	for(int i=sA.size();i>=0;i-=DIG){
         		int x=0,l=max(0,i-DIG);
         		for(int j=l;j<i;j++)x=x*10+A[j]-'0';
         		a.push_back(x);
         	}
-        	for(int i=sB.size()-1;i>=0;i--){
+        	for(int i=sB.size();i>=0;i--){
         		int x=0,l=max(0,i-DIG);
         		for(int j=l;j<i;j++)x=x*10+B[j]-'0';
         		b.push_back(x);
@@ -140,10 +140,10 @@ class big_int{
         	vector<long long>A64(a.begin(),a.end()),B64(b.begin(),b.end());
         	vector<long long>c=conv(A64,B64);
         	
-        	long long int carry=0;
-        	for(size_t i=0;i<(int)c.size();i++){
+        	long long carry=0;
+        	for(size_t i=0;i<c.size();i++){
         		long long x=c[i]+carry;
-        		c[i]=x/BASE;carry=x/BASE;
+        		c[i]=x%BASE;carry=x/BASE;
         	}
         	while(carry){
         		c.push_back(carry%BASE);
@@ -195,7 +195,6 @@ class big_int{
         static string modS(string a,string b){
             return subS(a,mulS(b,divS(a,b)));
         }
-
     public:
         big_int():number("0"){}
         big_int(const string& s):number(strip(s)){}
@@ -203,7 +202,7 @@ class big_int{
         big_int(int x) {
             number=to_string(x);
         }
-        big_int(long long x) {
+        big_int(long long x){
             number = to_string(x);
         }
         string str()const{
