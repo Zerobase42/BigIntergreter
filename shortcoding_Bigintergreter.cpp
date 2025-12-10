@@ -6,7 +6,7 @@ using namespace std;
 #endif
 class big_int{
     private:
-        string number;
+        string P;
         static void A(string&s){int p=s.find_first_not_of(48);p==(int)string::npos?s="0":s.erase(0,p);}
         static void B(string&a,string&b){A(a);A(b);}
         static bool C(const string&s){return!s.empty()&&s[0]=='-';}
@@ -23,29 +23,29 @@ class big_int{
         static string M(const string& a,const string& b){string c=a,d=b;bool e=C(c),f=C(d);if(e)c=c.substr(1);if(f)d=d.substr(1);if(c=="0")return"0";if(d=="0")throw out_of_range("dividebyzeroerror");string g="",h="0";for(char k:c){h+=k;A(h);int i=0;while(1){string j=G(h,d);if(C(j))break;h=j;i++;}g+=i+48;}A(g);if(e^f)g="-"+g;if(DIVIDE_METHOD){if(C(L(a,b,g))){if(e^f)g=G(g,"1");else g=H(g,"1");}}else{if(L(a,b,g)=="0")return g=="-0"?"0":g;if(e^f)g=G(g,"1");}return g=="-0"?"0":g;}
         static string N(string a,string b){return G(a,K(b,M(a,b)));}
     public:
-        big_int():number("0"){}
-        big_int(const string&s):number(D(s)){}
-        big_int(const char*s):number(D(string(s))){}
-        big_int(int x){number=to_string(x);}
-        big_int(long long x){number=to_string(x);}
-        string str()const{return number;}
+        big_int():P("0"){}
+        big_int(const string&s):P(D(s)){}
+        big_int(const char*s):P(D(string(s))){}
+        big_int(int x){P=to_string(x);}
+        big_int(long long x){P=to_string(x);}
+        string str()const{return P;}
         friend istream&operator>>(istream& i,big_int& n){string s;i>>s;n=big_int(s);return i;}
         friend ostream&operator<<(ostream&o,const big_int&n){o<<n.str();return o;}
-        bool operator<(const big_int& n)const{bool a=C(number),b=C(n.number);if(a&&!b)return 1;if(!a&&b)return 0;string x=a?number.substr(1):number,y=b?n.number.substr(1):n.number;B(x,y);if(x.size()!=y.size())return (x.size()<y.size())^a;return x!=y?(x<y)^a:0;}
+        bool operator<(const big_int& n)const{bool a=C(P),b=C(n.P);if(a&&!b)return 1;if(!a&&b)return 0;string x=a?P.substr(1):P,y=b?n.P.substr(1):n.P;B(x,y);if(x.size()!=y.size())return (x.size()<y.size())^a;return x!=y?(x<y)^a:0;}
         bool operator>(const big_int& n)const{return n<*this;};
-        bool operator==(const big_int& n)const{return number==n.number;}
-        bool operator<=(const big_int& n)const{return number<n.number||number==n.number;}
-        bool operator>=(const big_int& n)const{return number>n.number||number==n.number;}
-        bool operator!=(const big_int& n)const{return!(number==n.number);}
-        big_int operator+(const big_int& n)const{return big_int(H(this->number,n.number));}
-        big_int operator-(const big_int& n)const{return big_int(G(this->number,n.number));}
-        big_int operator*(const big_int& n)const{return big_int(K(this->number,n.number));}
-        big_int operator/(const big_int& n)const{return big_int(M(this->number,n.number));}
-        big_int operator%(const big_int& n)const{return big_int(N(this->number,n.number));}
-        big_int operator+=(const big_int& n){this->number=D(H(this->number,n.number));return*this;}
-        big_int operator-=(const big_int& n){this->number=D(G(this->number,n.number));return*this;}
-        big_int operator*=(const big_int& n){this->number=D(K(this->number,n.number));return*this;}
-        big_int operator/=(const big_int& n){this->number=D(M(this->number,n.number));return*this;}
+        bool operator==(const big_int& n)const{return P==n.P;}
+        bool operator<=(const big_int& n)const{return P<n.P||P==n.P;}
+        bool operator>=(const big_int& n)const{return P>n.P||P==n.P;}
+        bool operator!=(const big_int& n)const{return!(P==n.P);}
+        big_int operator+(const big_int& n)const{return big_int(H(this->P,n.P));}
+        big_int operator-(const big_int& n)const{return big_int(G(this->P,n.P));}
+        big_int operator*(const big_int& n)const{return big_int(K(this->P,n.P));}
+        big_int operator/(const big_int& n)const{return big_int(M(this->P,n.P));}
+        big_int operator%(const big_int& n)const{return big_int(N(this->P,n.P));}
+        big_int operator+=(const big_int& n){this->P=D(H(this->P,n.P));return*this;}
+        big_int operator-=(const big_int& n){this->P=D(G(this->P,n.P));return*this;}
+        big_int operator*=(const big_int& n){this->P=D(K(this->P,n.P));return*this;}
+        big_int operator/=(const big_int& n){this->P=D(M(this->P,n.P));return*this;}
         big_int&operator++(){*this+=big_int("1");return*this;}
         big_int operator++(int){big_int t=*this;++(*this);return t;}
         big_int&operator--(){*this-=big_int("1");return*this;}
