@@ -102,7 +102,7 @@ class big_int{
                     a[i+j]+=z;
                 }
             }
-        }    
+        }
         template<typename T>
         static vector<T>conv(const vector<T>&a, const vector<T>&b){
         	if(a.empty()||b.empty())return {};
@@ -129,12 +129,12 @@ class big_int{
         	vector<int>a,b;
         	for(int i=sA.size();i>=0;i-=DIG){
         		int x=0,l=max(0,i-DIG);
-        		for(int j=l;j<i;j++)x=x*10+A[j]-'0';
+        		for(int j=l;j<i;j++)x=x*10+sA[j]-'0';
         		a.push_back(x);
         	}
-        	for(int i=sB.size();i>=0;i--){
+        	for(int i=sB.size();i>=0;i-=DIG){
         		int x=0,l=max(0,i-DIG);
-        		for(int j=l;j<i;j++)x=x*10+B[j]-'0';
+        		for(int j=l;j<i;j++)x=x*10+sB[j]-'0';
         		b.push_back(x);
         	}
         	vector<long long>A64(a.begin(),a.end()),B64(b.begin(),b.end());
@@ -156,7 +156,7 @@ class big_int{
         		snprintf(buf,sizeof(buf),"%0*d",DIG,(int)c[i]);
         		res+=buf;
         	}
-        	return res;
+        	return na^nb?"-"+res:res;
         }
         static string check_modS(const string& A,const string& B,string q){
             return subS(A,mulS(B,q));
