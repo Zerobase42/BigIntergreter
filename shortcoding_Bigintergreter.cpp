@@ -17,22 +17,7 @@ class big_int{
         static string sumS(string a,string b){bool x=neg(a),y=neg(b);string A=x?a.substr(1):a,B=y?b.substr(1):b;if(!(x^y))return x?"-"+addS(A,B):addS(A,B);int c=absS(A,B);return c?((c>0?(x?"-":"")+subS(A,B):(y?"-":"")+subS(B,A))):"0";}
         static void fft(vector<complex<double>>&a){int n=a.size(),l=31-__builtin_clz(n);static vector<complex<long double>>r(2,1);static vector<complex<double>>t(2,1);for(static int k=2;k<n;k*=2){r.resize(n);t.resize(n);auto x=polar(1.0L,acos(-1.0L)/k);for(int i=k;i<k+k;i++)t[i]=r[i]=i&1?r[i/2]*x:r[i/2];}vector<int>v(n);for(int i=0;i<n;i++)v[i]=(v[i/2]|(i&1)<<l)/2;for(int i=0;i<n;i++)if(i<v[i])swap(a[i],a[v[i]]);for(int k=1;k<n;k*=2)for(int i=0;i<n;i+=2*k)for(int j=0;j<k;j++){auto x=(double*)&t[j+k],y=(double*)&a[i+j+k];complex<double>z(x[0]*y[0]-x[1]*y[1],x[0]*y[1]+x[1]*y[0]);a[i+j+k]=a[i+j]-z;a[i+j]+=z;}}
         template<typename T>
-        static vector<T>conv(const vector<T>&a, const vector<T>&b){
-        	if(a.empty()||b.empty())return {};
-        	vector<T>res((int)a.size()+(int)b.size()-1);
-        	int L=32-__builtin_clz((int)res.size()), n=1<<L;
-        	vector<complex<double>>in(n), out(n);
-        	copy(a.begin(),a.end(),begin(in));
-        	for(int i=0;i<(int)b.size();i++)in[i].imag(b[i]);
-        	fft(in);
-        	for(complex<double>&x:in)x*=x;
-        	for(int i=0;i<n;i++)out[i]=in[-i&(n-1)]-conj(in[i]);
-        	fft(out);
-        	for(int i=0;i<(int)res.size();i++){
-        		res[i]=static_cast<T>(imag(out[i])/(4*n)+((is_integral_v<T>)?(imag(out[i])>0?0.5:-0.5):0));
-        	}
-        	return res;
-        }
+        static vector<T>conv(const vector<T>&a, const vector<T>&b){if(a.empty()||b.empty())return {};vector<T>res((int)a.size()+(int)b.size()-1);int L=32-__builtin_clz((int)res.size()), n=1<<L;vector<complex<double>>in(n), out(n);copy(a.begin(),a.end(),begin(in));for(int i=0;i<(int)b.size();i++)in[i].imag(b[i]);fft(in);for(complex<double>&x:in)x*=x;for(int i=0;i<n;i++)out[i]=in[-i&(n-1)]-conj(in[i]);fft(out);for(int i=0;i<(int)res.size();i++)res[i]=static_cast<T>(imag(out[i])/(4*n)+((is_integral_v<T>)?(imag(out[i])>0?0.5:-0.5):0));return res;}
         static string mulS(const string&a,const string&b){int B=1000,D=3;bool n=neg(a),m=neg(b);string x=n?a.substr(1):a,y=m?b.substr(1):b;if(x=="0"||y=="0")return"0";vector<int>p,q;for(int i=x.size();i>0;i-=D){int t=0,l=max(0,i-D);for(int j=l;j<i;j++)t=t*10+x[j]-48;p.push_back(t);}for(int i=y.size();i>0;i-=D){int t=0,l=max(0,i-D);for(int j=l;j<i;j++)t=t*10+y[j]-48;q.push_back(t);}vector<long long>r=conv(vector<long long>(p.begin(),p.end()),vector<long long>(q.begin(),q.end()));long long c=0;for(size_t i=0;i<r.size();i++){long long t=r[i]+c;r[i]=t%B;c=t/B;}while(c){r.push_back(c%B);c/=B;}while(r.size()>1&&r.back()==0)r.pop_back();string s=to_string(r.back());for(int i=r.size()-2;i>=0;i--){string t=to_string((int)r[i]);while(t.size()<D)t='0'+t;s+=t;}return n^m?"-"+s:s;}
         static string check_modS(const string&a,const string&b,string q){return subS(a,mulS(b,q));}
         static string divS(const string& a,const string& b){string c=a,d=b;bool e=neg(c),f=neg(d);if(e)c=c.substr(1);if(f)d=d.substr(1);if(c=="0")return"0";if(d=="0")throw out_of_range("dividebyzeroerror");string g="",h="0";for(char k:c){h+=k;erase0_1(h);int i=0;while(1){string j=subS(h,d);if(neg(j))break;h=j;i++;}g+=i+48;}erase0_1(g);if(e^f)g="-"+g;if(DIVIDE_METHOD){if(neg(check_modS(a,b,g))){if(e^f)g=subS(g,"1");else g=sumS(g,"1");}}else{if(check_modS(a,b,g)=="0")return g=="-0"?"0":g;if(e^f)g=subS(g,"1");}return g=="-0"?"0":g;}
@@ -61,7 +46,7 @@ class big_int{
         big_int operator-=(const big_int& n){this->number=strip(subS(this->number,n.number));return*this;}
         big_int operator*=(const big_int& n){this->number=strip(mulS(this->number,n.number));return*this;}
         big_int operator/=(const big_int& n){this->number=strip(divS(this->number,n.number));return*this;}
-        big_int& operator++(){*this+=big_int("1");return*this;}
+        big_int&operator++(){*this+=big_int("1");return*this;}
         big_int operator++(int){big_int t=*this;++(*this);return t;}
         big_int&operator--(){*this-=big_int("1");return*this;}
         big_int operator--(int){big_int t=*this;--(*this);return t;}
