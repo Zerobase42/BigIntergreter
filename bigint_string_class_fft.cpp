@@ -292,6 +292,15 @@ class big_int{
             --(*this);
             return tmp;
         }
+        big_int big_pow(big_int a,big_int b){
+            if (b<0)return -1;
+            big_int r=1;
+            while(b>0){
+                if(b%2==1)r*=a;
+                a*=a;b/=2;
+            }
+            return r;
+        }
 };
 
 int main(){
