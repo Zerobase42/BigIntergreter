@@ -8,6 +8,8 @@
 #include <cstring>
 #include <stdexcept>
 #include <cmath>
+#include <complex>
+#include <vector>
 const bool DIVIDE_METHOD=true; // true: 0, false: -inf
 using ll=long long;
 using cd=complex<double>;
