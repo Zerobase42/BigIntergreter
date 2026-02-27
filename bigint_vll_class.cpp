@@ -1,4 +1,6 @@
-#include <bits/stdc++.h>
+#include <vector>
+#include <string>
+#include <iostream>
 #pragma GCC optimize("O3,unroll-loops")
 #pragma GCC target("avx,avx2,fma")
 #define MAXCARRY 1000000000LL
@@ -44,8 +46,12 @@ class big_int {
         ll borrow = 0;
         while (i >= 0) {
             ll x = a[i], y = (j >= 0 ? b[j] : 0), s = x - y - borrow;
-            if (s < 0) s += MAXCARRY;
-            borrow = (ll)s < 0;
+            if (s < 0) {
+                s += MAXCARRY;
+                borrow = 1;
+            } else {
+                borrow = 0;
+            }
             res.push_back(s);
             i--;
             j--;
@@ -57,7 +63,7 @@ class big_int {
 
    public:
     big_int() : number(1, 0), neg(false) {}
-    big_int(long long x) {
+    big_int(ll x) {
         if (x < 0) {
             neg = true;
             x = -x;
@@ -121,5 +127,60 @@ class big_int {
             }
         }
         return res;
+    }
+    big_int operator-(const big_int& n) const {
+        big_int res;
+        if (neg != n.neg) {
+            res.number = sumS(number, n.number);
+            res.neg = neg;
+            return res;
+        }
+        int c = cmpAbs(number, n.number);
+
+        if (c == 0) {
+            return big_int();
+        } else if (c > 0) {
+            res.number = subS(number, n.number);
+            res.neg = neg;
+        } else {
+            res.number = subS(n.number, number);
+            res.neg = !neg;
+        }
+        return res;
+    }
+    bool operator==(const big_int& n) const {
+        if (neg != n.neg) return false;
+        if (number.size() != n.number.size()) return false;
+        for (size_t i = 0; i < number.size(); i++) {
+            if (number[i] != n.number[i]) return false;
+        }
+        return true;
+    }
+    bool operator<(const big_int& n) const {
+        // 부호가 다르면
+        if (neg != n.neg)
+            return neg;  // 음수(true)가 더 작음
+
+        int c = cmpAbs(number, n.number);
+
+        if (!neg) {
+            // 둘 다 양수
+            return c < 0;
+        } else {
+            // 둘 다 음수 → 절댓값이 큰 쪽이 더 작음
+            return c > 0;
+        }
+    }
+    bool operator>(const big_int& n) const { return n < *this; }
+    bool operator!=(const big_int& n) const { return !(*this == n); }
+    bool operator<=(const big_int& n) const { return !(*this > n); }
+    bool operator>=(const big_int& n) const { return !(*this < n); }
+    big_int operator+=(const big_int& n) {
+        *this = *this + n;
+        return *this;
+    }
+    big_int operator-=(const big_int& n) {
+        *this = *this - n;
+        return *this;
     }
 };
