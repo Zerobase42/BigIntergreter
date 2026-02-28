@@ -1,12 +1,13 @@
-#include <vector>
-#include <string>
-#include <iostream>
-#include <iomanip>
+#include <bits/stdc++.h>
 #pragma GCC optimize("O3,unroll-loops")
 #pragma GCC target("avx,avx2,fma")
-#define MAXCARRY 1000000000LL
 #define vll vector<long long>
 #define ll long long
+constexpr int MAXLEN=16;
+constexpr ll pow10(int n){
+    return n==0?1LL:10LL*pow10(n-1);
+}
+constexpr ll MAXCARRY pow10(n);
 using namespace std;
 class big_int {
    private:
@@ -14,7 +15,7 @@ class big_int {
     bool neg;    // neg가 true면 음수
     static void normalize(vll& a) {
         int i = 0;
-        while (i + 1 < a.size() && a[i] == 0) i++;
+        while (i + 1 < (int)a.size() && a[i] == 0) i++;
         if (i > 0) a.erase(a.begin(), a.begin() + i);
     }
     static int cmpAbs(const vll& a, const vll& b) {
@@ -28,6 +29,7 @@ class big_int {
     }
     static vll sumS(const vll& a, const vll& b) {
         vll res;
+        res.reserve(max(a.size(), b.size()) + 1);
         int i = (int)a.size() - 1, j = (int)b.size() - 1;
         ll c = 0;
         while (i >= 0 || j >= 0 || c) {
@@ -43,6 +45,7 @@ class big_int {
     }
     static vll subS(const vll& a, const vll& b) {
         vll res;
+        res.reserve(max(a.size(), b.size()) + 1);
         int i = (int)a.size() - 1, j = (int)b.size() - 1;
         ll borrow = 0;
         while (i >= 0) {
@@ -61,7 +64,6 @@ class big_int {
         normalize(res);
         return res;
     }
-
    public:
     big_int() : number(1, 0), neg(false) {}
     big_int(ll x) {
@@ -92,8 +94,8 @@ class big_int {
         int pos = 0;
         while (pos + 1 < (int)s.size() && s[pos] == '0') pos++;
         s = s.substr(pos);
-        for (int i = s.size(); i > 0; i -= 9) {
-            int x = 0, l = max(0, i - 9);
+        for (int i = s.size(); i > 0; i -= MAXLEN) {
+            int x = 0, l = max(0, i - MAXLEN);
             for (int j = l; j < i; j++) x = x * 10 + (s[j] - '0');
             n.number.push_back(x);
         }
@@ -106,7 +108,7 @@ class big_int {
         if (n.neg) out << '-';
         out << n.number[0];
         for (int i = 1; i < (int)n.number.size(); i++)
-            out << setw(9) << setfill('0') << n.number[i];
+            out << setw(MAXLEN) << setfill('0') << n.number[i];
         return out;
     }
     big_int operator+(const big_int& n) const {
@@ -137,7 +139,6 @@ class big_int {
             return res;
         }
         int c = cmpAbs(number, n.number);
-
         if (c == 0) {
             return big_int();
         } else if (c > 0) {
@@ -158,24 +159,11 @@ class big_int {
         return true;
     }
     bool operator<(const big_int& n) const {
-        // 부호가 다르면
-        if (neg != n.neg)
-            return neg;  // 음수(true)가 더 작음
-
+        if (neg != n.neg)return neg;
         int c = cmpAbs(number, n.number);
-
-        if (!neg) {
-            // 둘 다 양수
-            return c < 0;
-        } else {
-            // 둘 다 음수 → 절댓값이 큰 쪽이 더 작음
-            return c > 0;
-        }
+        if (!neg)return c < 0;
+        else return c > 0;
     }
-    bool operator>(const big_int& n) const { return n < *this; }
-    bool operator!=(const big_int& n) const { return !(*this == n); }
-    bool operator<=(const big_int& n) const { return !(*this > n); }
-    bool operator>=(const big_int& n) const { return !(*this < n); }
     big_int operator+=(const big_int& n) {
         *this = *this + n;
         return *this;
@@ -183,5 +171,8 @@ class big_int {
     big_int operator-=(const big_int& n) {
         *this = *this - n;
         return *this;
+    }
+    bool is_negative() const {
+        return neg;
     }
 };
