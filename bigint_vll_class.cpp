@@ -1,183 +1,170 @@
 #include <bits/stdc++.h>
 #pragma GCC optimize("O3,unroll-loops")
 #pragma GCC target("avx,avx2,fma")
-#define vll vector<long long>
 #define ll long long
+#define vll vector<ll>
 constexpr int MAXLEN=16;
-constexpr ll pow10(int n){
-    return n==0?1LL:10LL*pow10(n-1);
+constexpr ll pow10(int n) {
+    return n == 0 ? 1LL : 10LL * pow10(n - 1);
 }
 constexpr ll MAXCARRY=pow10(MAXLEN);
 using namespace std;
 class big_int {
    private:
-    vll number;  // 앞 자리가 큰 수
-    bool neg;    // neg가 true면 음수
-    static void normalize(vll& a) {
-        int i = 0;
-        while (i + 1 < (int)a.size() && a[i] == 0) i++;
-        if (i > 0) a.erase(a.begin(), a.begin() + i);
+    vll number;  // LSB-first
+    bool neg;
+    static void trim(vll& a) {
+        while (a.size() > 1 && a.back() == 0)
+            a.pop_back();
     }
     static int cmpAbs(const vll& a, const vll& b) {
         if (a.size() != b.size())
             return a.size() < b.size() ? -1 : 1;
-        for (size_t i = 0; i < a.size(); i++) {
+
+        for (int i = (int)a.size() - 1; i >= 0; --i) {
             if (a[i] != b[i])
                 return a[i] < b[i] ? -1 : 1;
         }
         return 0;
     }
-    static vll sumS(const vll& a, const vll& b) {
+    static vll addAbs(const vll& a, const vll& b) {
         vll res;
         res.reserve(max(a.size(), b.size()) + 1);
-        int i = (int)a.size() - 1, j = (int)b.size() - 1;
-        ll c = 0;
-        while (i >= 0 || j >= 0 || c) {
-            ll x = (i >= 0 ? a[i] : 0), y = (j >= 0 ? b[j] : 0), s = x + y + c;
+
+        ll carry = 0;
+        for (size_t i = 0; i < max(a.size(), b.size()) || carry; ++i) {
+            ll x = (i < a.size() ? a[i] : 0);
+            ll y = (i < b.size() ? b[i] : 0);
+
+            ll s = x + y + carry;
             res.push_back(s % MAXCARRY);
-            c = s / MAXCARRY;
-            i--;
-            j--;
+            carry = s / MAXCARRY;
         }
-        reverse(res.begin(), res.end());
-        normalize(res);
+
         return res;
     }
-    static vll subS(const vll& a, const vll& b) {
+    static vll subAbs(const vll& a, const vll& b) {
         vll res;
-        res.reserve(max(a.size(), b.size()) + 1);
-        int i = (int)a.size() - 1, j = (int)b.size() - 1;
+        res.reserve(a.size());
+
         ll borrow = 0;
-        while (i >= 0) {
-            ll x = a[i], y = (j >= 0 ? b[j] : 0), s = x - y - borrow;
+        for (size_t i = 0; i < a.size(); ++i) {
+            ll x = a[i];
+            ll y = (i < b.size() ? b[i] : 0);
+
+            ll s = x - y - borrow;
             if (s < 0) {
                 s += MAXCARRY;
                 borrow = 1;
-            } else {
+            } else
                 borrow = 0;
-            }
+
             res.push_back(s);
-            i--;
-            j--;
         }
-        reverse(res.begin(), res.end());
-        normalize(res);
+
+        trim(res);
         return res;
     }
    public:
     big_int() : number(1, 0), neg(false) {}
     big_int(ll x) {
-        neg=x<0;
-        if(neg)x=-x;
-        if (x==0){
-            number={0};
+        if (x < 0) {
+            neg = true;
+            x = -x;
+        } else
+            neg = false;
+
+        if (x == 0) {
+            number = { 0 };
             return;
         }
         while (x) {
             number.push_back(x % MAXCARRY);
             x /= MAXCARRY;
         }
-        reverse(number.begin(), number.end());
-    }
-    big_int(string& s){
-        if(s=="0")return;
-        neg=s[0]=='-';
-        if(neg)s=s.substr(1);
-        number.resize((s.size()-1)/MAXLEN+1);
-        for(int i=0;i<s.size();++i){
-            int j=(s.size()-i-1)/MAXLEN;
-            number[j]=10*number[j]+s[i]-'0';
-        }
-        reverse(number.begin(), number.end());
     }
     friend istream& operator>>(istream& in, big_int& n) {
         string s;
         in >> s;
-        n.neg = false;
+
         n.number.clear();
+        n.neg = false;
+
         if (s[0] == '-') {
             n.neg = true;
             s = s.substr(1);
         }
+
         int pos = 0;
         while (pos + 1 < (int)s.size() && s[pos] == '0') pos++;
         s = s.substr(pos);
+
         for (int i = s.size(); i > 0; i -= MAXLEN) {
-            int x = 0, l = max(0, i - MAXLEN);
-            for (int j = l; j < i; j++) x = x * 10 + (s[j] - '0');
-            n.number.push_back(x);
+            int l = max(0, i - MAXLEN);
+            ll x = 0;
+            for (int j = l; j < i; ++j)
+                x = x * 10 + (s[j] - '0');
+
+            n.number.push_back(x);  // LSB-first
         }
-        reverse(n.number.begin(), n.number.end());
-        if (n.number.empty()) n.number.push_back(0);
-        if (n.number.size() == 1 && n.number[0] == 0) n.neg = false;
+
+        if (n.number.empty())
+            n.number.push_back(0);
+
+        if (n.number.size() == 1 && n.number[0] == 0)
+            n.neg = false;
+
         return in;
     }
     friend ostream& operator<<(ostream& out, const big_int& n) {
         if (n.neg) out << '-';
-        out << n.number[0];
-        for (int i = 1; i < (int)n.number.size(); i++)
+
+        int sz = n.number.size();
+        out << n.number[sz - 1];
+
+        for (int i = sz - 2; i >= 0; --i)
             out << setw(MAXLEN) << setfill('0') << n.number[i];
         return out;
     }
-    big_int operator+(const big_int& n) const {
+    big_int operator+(const big_int& other) const {
         big_int res;
-        if (this->neg == n.neg) {
-            res.number = sumS(this->number, n.number);
-            res.neg = this->neg;
-        } else {
-            int c = cmpAbs(this->number, n.number);
 
-            if (c == 0)
-                return big_int();
-            else if (c > 0) {
-                res.number = subS(this->number, n.number);
-                res.neg = this->neg;
+        if (neg == other.neg) {
+            res.number = addAbs(number, other.number);
+            res.neg = neg;
+        } else {
+            int c = cmpAbs(number, other.number);
+            if (c == 0) return big_int();
+
+            if (c > 0) {
+                res.number = subAbs(number, other.number);
+                res.neg = neg;
             } else {
-                res.number = subS(n.number, this->number);
-                res.neg = n.neg;
+                res.number = subAbs(other.number, number);
+                res.neg = other.neg;
             }
         }
         return res;
     }
-    big_int operator-(const big_int& n) const {
-        big_int res;
-        if (neg != n.neg) {
-            res.number = sumS(number, n.number);
-            res.neg = neg;
-            return res;
-        }
-        int c = cmpAbs(number, n.number);
-        if (c == 0) {
-            return big_int();
-        } else if (c > 0) {
-            res.number = subS(number, n.number);
-            res.neg = neg;
-        } else {
-            res.number = subS(n.number, number);
-            res.neg = !neg;
-        }
-        return res;
+    big_int operator-(const big_int& other) const {
+        big_int tmp = other;
+        tmp.neg = !tmp.neg;
+        return *this + tmp;
     }
-    bool operator==(const big_int& n) const {
-        if (neg != n.neg) return false;
-        if (number.size() != n.number.size()) return false;
-        for (size_t i = 0; i < number.size(); i++) {
-            if (number[i] != n.number[i]) return false;
-        }
-        return true;
+    bool operator<(const big_int& other) const {
+        if (neg != other.neg)return neg;
+        int c = cmpAbs(number, other.number);
+        return neg ? (c > 0) : (c < 0);
     }
-    bool operator<(const big_int& n) const {
-        if (neg != n.neg)return neg;
-        int c = cmpAbs(number, n.number);
-        if (!neg)return c < 0;
-        else return c > 0;
+    bool operator==(const big_int& other) const {
+        return neg == other.neg && number == other.number;
     }
-    big_int operator+=(const big_int& n) {
-        *this = *this + n;
+    big_int& operator+=(const big_int& other) {
+        *this = *this + other;
         return *this;
     }
-    big_int operator-=(const big_int& n) {
-        *this = *this - n;
+    big_int& operator-=(const big_int& other) {
+        *this = *this - other;
         return *this;
     }
     bool is_neg() const {
