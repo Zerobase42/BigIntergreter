@@ -7,7 +7,7 @@ constexpr int MAXLEN=16;
 constexpr ll pow10(int n){
     return n==0?1LL:10LL*pow10(n-1);
 }
-constexpr ll MAXCARRY pow10(n);
+constexpr ll MAXCARRY=pow10(MAXLEN);
 using namespace std;
 class big_int {
    private:
@@ -67,18 +67,26 @@ class big_int {
    public:
     big_int() : number(1, 0), neg(false) {}
     big_int(ll x) {
-        if (x < 0) {
-            neg = true;
-            x = -x;
-        } else
-            neg = false;
-        if (x == 0) {
-            number = { 0 };
+        neg=x<0;
+        if(neg)x=-x;
+        if (x==0){
+            number={0};
             return;
         }
         while (x) {
             number.push_back(x % MAXCARRY);
             x /= MAXCARRY;
+        }
+        reverse(number.begin(), number.end());
+    }
+    big_int(string& s){
+        if(s=="0")return;
+        neg=s[0]=='-';
+        if(neg)s=s.substr(1);
+        number.resize((s.size()-1)/MAXLEN+1);
+        for(int i=0;i<s.size();++i){
+            int j=(s.size()-i-1)/MAXLEN;
+            number[j]=10*number[j]+s[i]-'0';
         }
         reverse(number.begin(), number.end());
     }
@@ -172,7 +180,7 @@ class big_int {
         *this = *this - n;
         return *this;
     }
-    bool is_negative() const {
+    bool is_neg() const {
         return neg;
     }
 };
