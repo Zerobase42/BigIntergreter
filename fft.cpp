@@ -38,10 +38,14 @@ vector<T>conv(const vector<T>&a,const vector<T>&b){
 	for(complex<double>&x:in)x*=x;
 	for(int i=0;i<n;i++)out[i]=in[-i&(n-1)]-conj(in[i]);
 	fft(out);
-	for(int i=0;i<(int)res.size();i++)
-		res[i]=static_cast<T>(imag(out[i])/(4*n)+(is_integral_v<T>?(imag(out[i])>0?0.5:-0.5):0));
-
-	return res;
+	// if not uses integral, use this.
+	// for(int i=0;i<(int)res.size();i++) 
+	//     res[i]=static_cast<T>(imag(out[i])/(4*n)+(is_integral_v<T>?(imag(out[i])>0?0.5:-0.5):0));
+    for (int i = 0; i < (int)res.size(); ++i) {
+        double val = imag(out[i]) / (4 * n);
+        res[i] = (long long)(val > 0 ? val + 0.5 : val - 0.5);
+    }
+    return res;
 }
 
 string multy(const string& A,const string& B){
