@@ -1,89 +1,156 @@
-#include <bits/stdc++.h>
+#include <unistd.h>
 #pragma GCC optimize("O3,unroll-loops")
 #pragma GCC target("avx,avx2,fma")
-using namespace std;
+#define ll long long
+#define max(a, b) ((a) > (b) ? (a) : (b))
+#define DIG 5
+#define NUMLEN 1000000
+#define BASE 100000
+#define MAX 1048576
+const long double PI = 3.14159265358979323846;
 
-constexpr int BASE = 100000, DIG = 5;
-
-void fft(vector<complex<double>>& a) {
-    int n = (int)a.size(), L = 31 - __builtin_clz(n);
-    static vector<complex<long double>> R(2, 1);
-    static vector<complex<double>> rt(2, 1);  //(^10% faster if double)
-    for (static int k = 2; k < n; k *= 2) {
-        R.resize(n);
-        rt.resize(n);
-        auto x = polar(1.0L, acos(-1.0L) / k);
-        for (int i = k; i < k + k; i++) rt[i] = R[i] = i & 1 ? R[i / 2] * x : R[i / 2];
+#define strlen __builtin_strlen
+/*
+static size_t strlen(char* zb) {
+    size_t r = 0;
+    while (*zb != '\n' && *zb != 0) {
+        zb++;
+        r++;
     }
-    vector<int> rev(n);
-    for (int i = 0; i < n; i++) rev[i] = (rev[i / 2] | (i & 1) << L) / 2;
+    return r;
+}
+*/
+
+typedef struct {
+    double real, imag;
+} _complex;
+static inline _complex make_complex(double real, double imag) {
+    _complex z;
+    z.real = real;
+    z.imag = imag;
+    return z;
+}
+static inline _complex c_add(_complex a, _complex b) {
+    return make_complex(a.real + b.real, a.imag + b.imag);
+}
+static inline _complex c_sub(_complex a, _complex b) {
+    return make_complex(a.real - b.real, a.imag - b.imag);
+}
+static inline _complex c_mul(_complex a, _complex b) {
+    return make_complex(
+        a.real * b.real - a.imag * b.imag,
+        a.real * b.imag + a.imag * b.real);
+}
+static inline void c_addeq(_complex* a, _complex b) {
+    a->real += b.real;
+    a->imag += b.imag;
+}
+static inline void c_subeq(_complex* a, _complex b) {
+    a->real -= b.real;
+    a->imag -= b.imag;
+}
+static inline void c_muleq(_complex* a, _complex b) {
+    double nr = a->real * b.real - a->imag * b.imag;
+    a->imag = a->real * b.imag + a->imag * b.real;
+    a->real = nr;
+}
+static inline _complex c_conj(_complex a) {
+    return make_complex(a.real, -a.imag);
+}
+static inline _complex c_polar(double th) {
+    return make_complex(__builtin_cos(th), __builtin_sin(th));
+}
+#define cd _complex
+static inline void fft(cd* a, int n) {
+    int L = 31 - __builtin_clz(n);
+    static int rev[MAX], ln = 0;
+    static cd rt[MAX];
+    if (ln != n) {
+        rt[0] = rt[1] = make_complex(1.0, 0.0);
+        for (int k = 2; k < n; k <<= 1) {
+            cd x = c_polar(PI / k);
+            for (int i = k; i < k + k; i++) rt[i] = i & 1 ? c_mul(rt[i / 2], x) : rt[i / 2];
+        }
+        rev[0] = 0;
+        for (int i = 0; i < n; i++) rev[i] = (rev[i / 2] | (i & 1) << L) / 2;
+        ln = n;
+    }
     for (int i = 0; i < n; i++)
-        if (i < rev[i]) swap(a[i], a[rev[i]]);
-    for (int k = 1; k < n; k *= 2) {
-        for (int i = 0; i < n; i += 2 * k)
+        if (i < rev[i]) {
+            cd t = a[i];
+            a[i] = a[rev[i]];
+            a[rev[i]] = t;
+        }
+    for (int k = 1; k < n; k <<= 1) {
+        for (int i = 0; i < n; i += (k << 1))
             for (int j = 0; j < k; j++) {
-                // complex<double>z=rt[j+k]*a[i+j+k];//(25% faster if hand-rolled)    ///include-line
-                auto x = (double*)&rt[j + k], y = (double*)&a[i + j + k];                 /// exclude-line
-                complex<double> z(x[0] * y[0] - x[1] * y[1], x[0] * y[1] + x[1] * y[0]);  /// exclude-line
-                a[i + j + k] = a[i + j] - z;
-                a[i + j] += z;
+                cd z = c_mul(rt[j + k], a[i + j + k]);
+                a[i + j + k] = c_sub(a[i + j], z);
+                c_addeq(&a[i + j], z);
             }
     }
 }
-template <typename T>
-vector<T> conv(const vector<T>& a, const vector<T>& b) {
-    if (a.empty() || b.empty()) return {};
-    vector<T> res((int)a.size() + (int)b.size() - 1);
-    int L = 32 - __builtin_clz((int)res.size()), n = 1 << L;
-    vector<complex<double>> in(n), out(n);
-    copy(a.begin(), a.end(), begin(in));
-    for (int i = 0; i < (int)b.size(); i++) in[i].imag(b[i]);
-    fft(in);
-    for (complex<double>& x : in) x *= x;
-    for (int i = 0; i < n; i++) out[i] = in[-i & (n - 1)] - conj(in[i]);
-    fft(out);
-    for (int i = 0; i < (int)res.size(); i++) {
-        double val = imag(out[i]) / (4 * n);
-        res[i] = (long long)(val > 0 ? val + 0.5 : val - 0.5);
+static inline void conv(ll* a, int sa, ll* b, int sb, ll* res) {
+    int L = 32 - __builtin_clz(sa + sb - 1), n = 1 << L, i;
+    cd in[n], out[n];
+    for (i = 0; i < sa; ++i) in[i].real = a[i];
+    for (i = 0; i < sb; ++i) in[i].imag = b[i];
+    fft(in, n);
+    for (int i = 0; i < n; ++i) {
+        double r = in[i].real, im = in[i].imag;
+        in[i].real = r * r - im * im;
+        in[i].imag = 2 * r * im;
     }
-    return res;
+    for (i = 0; i < n; i++) out[i] = c_sub(in[-i & (n - 1)], c_conj(in[i]));
+    fft(out, n);
+    for (i = 0; i < sa + sb - 1; ++i) {
+        double val = out[i].imag / (4 * n);
+        res[i] = (ll)(val > 0 ? val + 0.5 : val - 0.5);
+    }
 }
 int main() {
-    ios_base::sync_with_stdio(false);
-    cin.tie(NULL);
-    string a, b;
-    cin >> a >> b;
+    char buf[(NUMLEN << 1) + 4];
+    int len = syscall(0, 0, buf, (NUMLEN << 1) + 3), mid = 0, idx = 0, p, i, j, l;
+    buf[len] = 0;
+    while (buf[mid] > ' ') mid++;
+    for (p = mid; buf[p] && buf[p] <= ' '; p++);
+    for (len = p; buf[len] > ' '; len++);
+    int la = mid, lb = len - p;
 
-    vector<long long> A, B;
-    A.reserve(a.size() / DIG + 1);
-    B.reserve(b.size() / DIG + 1);
-    for (int i = a.size(); i >= 0; i -= DIG) {
-        int l = max(0, i - DIG), r = 0;
-        for (int j = l; j < i; ++j) r = r * 10 + (a[j] - '0');
-        A.push_back(r);
+    int na = (la + DIG - 1) / DIG, nb = (lb + DIG - 1) / DIG;
+    ll A[na], B[nb];
+    for (i = la; i > 0; i -= DIG) {
+        l = max(0, i - DIG);
+        ll r = 0;
+        for (j = l; j < i; j++) r = r * 10 + (buf[j] - '0');
+        A[idx++] = r;
     }
-
-    for (int i = b.size(); i >= 0; i -= DIG) {
-        int l = max(0, i - DIG), r = 0;
-        for (int j = l; j < i; ++j) r = r * 10 + (b[j] - '0');
-        B.push_back(r);
+    idx = 0;
+    for (i = len; i > mid + 1; i -= DIG) {
+        l = max(mid + 1, i - DIG);
+        ll r = 0;
+        for (j = l; j < i; j++) r = r * 10 + (buf[j] - '0');
+        B[idx++] = r;
     }
-
-    vector<long long> C = conv(A, B);
-
-    long long carry = 0;
-    for (size_t i = 0; i < C.size(); ++i) {
-        long long x = C[i] + carry;
-        C[i] = x % BASE;
-        carry = x / BASE;
+    int nc = na + nb - 1;
+    ll C[nc], carry = 0;
+    conv(A, na, B, nb, C);
+    for (i = 0; i < nc; ++i) {
+        ll x = C[i] + carry;
+        C[i] = x % BASE, carry = x / BASE;
     }
-    while (carry) {
-        C.push_back(carry % BASE);
-        carry /= BASE;
+    while (carry) C[nc++] = carry % BASE, carry /= BASE;
+    while (nc > 1 && C[nc - 1] == 0) nc--;
+    char wbuf[nc * DIG], tmp[20];
+    int pos = 0, t = 0;
+    ll x = C[nc - 1];
+    while (x) tmp[t++] = x % 10 + '0', x /= 10;
+    if (t == 0) tmp[t++] = '0';
+    while (t--) wbuf[pos++] = tmp[t];
+    for (i = nc - 2; i >= 0; --i) {
+        x = C[i];
+        for (j = 0; j < DIG; j++) tmp[j] = x % 10 + '0', x /= 10;
+        for (j = DIG - 1; j >= 0; j--) wbuf[pos++] = tmp[j];
     }
-    while (C.size() > 1 && C.back() == 0)
-        C.pop_back();
-
-    for (long long i : C)
-        cout << setw(MAXLEN) << setfill('0') << i;
+    syscall(1, 1, wbuf, pos);
 }
