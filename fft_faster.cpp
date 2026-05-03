@@ -1,4 +1,10 @@
+#ifdef ONLINE
 #include <unistd.h>
+#else
+#include <stdio.h>
+#define read(n, buf, pos) fread(buf, 1, pos, stdin)
+#define write(n, wbuf, pos) fwrite(wbuf, 1, pos, stdout)
+#endif
 #pragma GCC optimize("O3,unroll-loops")
 #pragma GCC target("avx,avx2,fma")
 #define ll long long
@@ -20,7 +26,6 @@ static size_t strlen(char* zb) {
     return r;
 }
 */
-
 typedef struct {
     double real, imag;
 } _complex;
@@ -29,9 +34,6 @@ static inline _complex make_complex(double real, double imag) {
     z.real = real;
     z.imag = imag;
     return z;
-}
-static inline _complex c_add(_complex a, _complex b) {
-    return make_complex(a.real + b.real, a.imag + b.imag);
 }
 static inline _complex c_sub(_complex a, _complex b) {
     return make_complex(a.real - b.real, a.imag - b.imag);
@@ -44,15 +46,6 @@ static inline _complex c_mul(_complex a, _complex b) {
 static inline void c_addeq(_complex* a, _complex b) {
     a->real += b.real;
     a->imag += b.imag;
-}
-static inline void c_subeq(_complex* a, _complex b) {
-    a->real -= b.real;
-    a->imag -= b.imag;
-}
-static inline void c_muleq(_complex* a, _complex b) {
-    double nr = a->real * b.real - a->imag * b.imag;
-    a->imag = a->real * b.imag + a->imag * b.real;
-    a->real = nr;
 }
 static inline _complex c_conj(_complex a) {
     return make_complex(a.real, -a.imag);
@@ -110,15 +103,14 @@ static inline void conv(ll* a, int sa, ll* b, int sb, ll* res) {
 }
 int main() {
     char buf[(NUMLEN << 1) + 4];
-    int len = syscall(0, 0, buf, (NUMLEN << 1) + 3), mid = 0, idx = 0, p, i, j, l;
+    size_t len = read(0, buf, (NUMLEN << 1) + 3), mid = 0, idx = 0, p, i, j, l;
     buf[len] = 0;
     while (buf[mid] > ' ') mid++;
     for (p = mid; buf[p] && buf[p] <= ' '; p++);
     for (len = p; buf[len] > ' '; len++);
     int la = mid, lb = len - p;
-
     int na = (la + DIG - 1) / DIG, nb = (lb + DIG - 1) / DIG;
-    ll A[na], B[nb];
+    ll A[MAX], B[MAX];
     for (i = la; i > 0; i -= DIG) {
         l = max(0, i - DIG);
         ll r = 0;
@@ -133,7 +125,7 @@ int main() {
         B[idx++] = r;
     }
     int nc = na + nb - 1;
-    ll C[nc], carry = 0;
+    ll C[MAX], carry = 0;
     conv(A, na, B, nb, C);
     for (i = 0; i < nc; ++i) {
         ll x = C[i] + carry;
@@ -141,7 +133,7 @@ int main() {
     }
     while (carry) C[nc++] = carry % BASE, carry /= BASE;
     while (nc > 1 && C[nc - 1] == 0) nc--;
-    char wbuf[nc * DIG], tmp[20];
+    char wbuf[MAX * DIG], tmp[20];
     int pos = 0, t = 0;
     ll x = C[nc - 1];
     while (x) tmp[t++] = x % 10 + '0', x /= 10;
@@ -152,5 +144,5 @@ int main() {
         for (j = 0; j < DIG; j++) tmp[j] = x % 10 + '0', x /= 10;
         for (j = DIG - 1; j >= 0; j--) wbuf[pos++] = tmp[j];
     }
-    syscall(1, 1, wbuf, pos);
+    write(1, wbuf, pos);
 }
