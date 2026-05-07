@@ -1,7 +1,8 @@
-#ifdef ONLINE
+#ifdef ONLINEJUDGE
 #include <unistd.h>
 #else
 #include <stdio.h>
+#define syscall(a, b, buf, pos) ((a)==0?read(b, buf, pos):write(b, buf, pos))
 #define read(n, buf, pos) fread(buf, 1, pos, stdin)
 #define write(n, wbuf, pos) fwrite(wbuf, 1, pos, stdout)
 #endif
@@ -9,21 +10,17 @@
 #pragma GCC target("avx,avx2,fma")
 #define ll long long
 #define max(a, b) ((a) > (b) ? (a) : (b))
-#define DIG 5
+#define DIG 4
 #define NUMLEN 1000000
-#define BASE 100000
+#define BASE 10000
 #define MAX 1048576
 const long double PI = 3.14159265358979323846;
-
-#define strlen __builtin_strlen
 /*
-static size_t strlen(char* zb) {
-    size_t r = 0;
-    while (*zb != '\n' && *zb != 0) {
-        zb++;
-        r++;
-    }
-    return r;
+#define strlen __builtin_strlen
+size_t strlen(char*zb){
+        size_t r=0;
+        while(*zb!='\n'&&*zb!=0){zb++;r++;}
+        return r;
 }
 */
 typedef struct {
@@ -35,30 +32,28 @@ static inline _complex make_complex(double real, double imag) {
     z.imag = imag;
     return z;
 }
-static inline _complex c_sub(_complex a, _complex b) {
-    return make_complex(a.real - b.real, a.imag - b.imag);
-}
-static inline _complex c_mul(_complex a, _complex b) {
-    return make_complex(
-        a.real * b.real - a.imag * b.imag,
-        a.real * b.imag + a.imag * b.real);
-}
+static inline _complex c_sub(_complex a, _complex b) { return make_complex(a.real - b.real, a.imag - b.imag); }
+static inline _complex c_mul(_complex a, _complex b) { return make_complex(a.real * b.real - a.imag * b.imag, a.real * b.imag + a.imag * b.real); }
 static inline void c_addeq(_complex* a, _complex b) {
     a->real += b.real;
     a->imag += b.imag;
 }
-static inline _complex c_conj(_complex a) {
-    return make_complex(a.real, -a.imag);
-}
-static inline _complex c_polar(double th) {
-    return make_complex(__builtin_cos(th), __builtin_sin(th));
-}
+static inline _complex c_conj(_complex a) { return make_complex(a.real, -a.imag); }
+static inline _complex c_polar(double th) { return make_complex(__builtin_cos(th), __builtin_sin(th)); }
 #define cd _complex
+// [메모리 최적화] in/out 배열을 하나로 통합: in만 사용
+static cd in[MAX];
+// [메모리 최적화] DIG가 6이 되면서 A, B, C의 최대 필요 크기도 줄어듦
+static ll A[MAX / 2], B[MAX / 2], C[MAX / 2];
+
+static char io_buf[(NUMLEN << 1) + 10];
+static char tmp[20];
+
 static inline void fft(cd* a, int n) {
-    int L = 31 - __builtin_clz(n);
     static int rev[MAX], ln = 0;
     static cd rt[MAX];
     if (ln != n) {
+        int L = 31 - __builtin_clz(n);
         rt[0] = rt[1] = make_complex(1.0, 0.0);
         for (int k = 2; k < n; k <<= 1) {
             cd x = c_polar(PI / k);
@@ -70,62 +65,74 @@ static inline void fft(cd* a, int n) {
     }
     for (int i = 0; i < n; i++)
         if (i < rev[i]) {
-            cd t = a[i];
-            a[i] = a[rev[i]];
-            a[rev[i]] = t;
+            cd t = a[i]; a[i] = a[rev[i]]; a[rev[i]] = t;
         }
     for (int k = 1; k < n; k <<= 1) {
         for (int i = 0; i < n; i += (k << 1))
             for (int j = 0; j < k; j++) {
                 cd z = c_mul(rt[j + k], a[i + j + k]);
                 a[i + j + k] = c_sub(a[i + j], z);
-                c_addeq(&a[i + j], z);
+                a[i + j].real += z.real;
+                a[i + j].imag += z.imag;
             }
     }
 }
+
 static inline void conv(ll* a, int sa, ll* b, int sb, ll* res) {
-    int L = 32 - __builtin_clz(sa + sb - 1), n = 1 << L, i;
-    cd in[n], out[n];
+    register int L = 32 - __builtin_clz(sa + sb - 1), n = 1 << L, i;
+    
+    // 1. in 배열 초기화 및 입력값 대입
+    for (i = 0; i < n; ++i) in[i] = make_complex(0, 0);
     for (i = 0; i < sa; ++i) in[i].real = a[i];
     for (i = 0; i < sb; ++i) in[i].imag = b[i];
     fft(in, n);
-    for (int i = 0; i < n; ++i) {
+    // 2. 점별 곱셈 (Pointwise Multiplication)
+    for (i = 0; i < n; ++i) {
         double r = in[i].real, im = in[i].imag;
         in[i].real = r * r - im * im;
         in[i].imag = 2 * r * im;
     }
-    for (i = 0; i < n; i++) out[i] = c_sub(in[-i & (n - 1)], c_conj(in[i]));
-    fft(out, n);
+    // 3. 별도의 out 배열 없이 in 배열을 가공하여 IFFT 수행
+    // out[i] = in[-i] - conj(in[i]) 연산을 인플레이스처럼 수행
+    // (n-i) & (n-1)을 통해 역방향 인덱스 참조
+    for (i = 0; i <= n / 2; i++) {
+        register int j = (n - i) & (n - 1);
+        cd val_i = in[i], val_j = in[j];
+        
+        in[i] = c_sub(val_j, c_conj(val_i));
+        in[j] = c_sub(val_i, c_conj(val_j));
+    }
+    
+    fft(in, n);
+    
     for (i = 0; i < sa + sb - 1; ++i) {
-        double val = out[i].imag / (4 * n);
+        double val = in[i].imag / (4 * n);
         res[i] = (ll)(val > 0 ? val + 0.5 : val - 0.5);
     }
 }
 int main() {
-    char buf[(NUMLEN << 1) + 4];
-    size_t len = read(0, buf, (NUMLEN << 1) + 3), mid = 0, idx = 0, p, i, j, l;
-    buf[len] = 0;
-    while (buf[mid] > ' ') mid++;
-    for (p = mid; buf[p] && buf[p] <= ' '; p++);
-    for (len = p; buf[len] > ' '; len++);
+    int len = syscall(0, 0, io_buf, (NUMLEN << 1) + 3), mid = 0, idx = 0, p, i, j, l;
+    io_buf[len] = 0;
+    while (io_buf[mid] > ' ') mid++;
+    for (p = mid; io_buf[p] && io_buf[p] <= ' '; p++);
+    for (len = p; io_buf[len] > ' '; len++);
     int la = mid, lb = len - p;
     int na = (la + DIG - 1) / DIG, nb = (lb + DIG - 1) / DIG;
-    ll A[MAX], B[MAX];
     for (i = la; i > 0; i -= DIG) {
         l = max(0, i - DIG);
         ll r = 0;
-        for (j = l; j < i; j++) r = r * 10 + (buf[j] - '0');
+        for (j = l; j < i; j++) r = r * 10 + (io_buf[j] - '0');
         A[idx++] = r;
     }
     idx = 0;
     for (i = len; i > mid + 1; i -= DIG) {
         l = max(mid + 1, i - DIG);
         ll r = 0;
-        for (j = l; j < i; j++) r = r * 10 + (buf[j] - '0');
+        for (j = l; j < i; j++) r = r * 10 + (io_buf[j] - '0');
         B[idx++] = r;
     }
     int nc = na + nb - 1;
-    ll C[MAX], carry = 0;
+    ll carry = 0;
     conv(A, na, B, nb, C);
     for (i = 0; i < nc; ++i) {
         ll x = C[i] + carry;
@@ -133,16 +140,17 @@ int main() {
     }
     while (carry) C[nc++] = carry % BASE, carry /= BASE;
     while (nc > 1 && C[nc - 1] == 0) nc--;
-    char wbuf[MAX * DIG], tmp[20];
+    
     int pos = 0, t = 0;
     ll x = C[nc - 1];
     while (x) tmp[t++] = x % 10 + '0', x /= 10;
     if (t == 0) tmp[t++] = '0';
-    while (t--) wbuf[pos++] = tmp[t];
+    while (t--) io_buf[pos++] = tmp[t];
     for (i = nc - 2; i >= 0; --i) {
         x = C[i];
         for (j = 0; j < DIG; j++) tmp[j] = x % 10 + '0', x /= 10;
-        for (j = DIG - 1; j >= 0; j--) wbuf[pos++] = tmp[j];
+        for (j = DIG - 1; j >= 0; j--) io_buf[pos++] = tmp[j];
     }
-    write(1, wbuf, pos);
+    
+    syscall(1, 1, io_buf, pos);
 }
