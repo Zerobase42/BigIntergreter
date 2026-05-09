@@ -61,7 +61,7 @@ static inline void fft(cd*a,int n){
     }
 }
 static inline void conv(ll*a,int sa,ll*b,int sb,ll*res){
-    int L=32-__builtin_clz(sa+sb-1),n=1<<L,i;
+    int n=1<<(32-__builtin_clz(sa+sb-1)),i;
     for(i=0;i<n;++i)in[i]=make_complex(0,0);
     for(i=0;i<sa;++i)in[i].real=a[i];
     for(i=0;i<sb;++i)in[i].imag=b[i];

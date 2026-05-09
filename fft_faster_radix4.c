@@ -13,7 +13,7 @@
 #define DIG 4
 #define NUMLEN 1000000
 #define BASE 10000
-#define MAX 1048576
+#define MAX 1048576// 1<<20
 const long double PI = 3.14159265358979323846;
 typedef struct {
     double real, imag;
@@ -48,7 +48,7 @@ static inline void fft(cd* a, int n) {
             for (int i = k; i < k + k; i++) rt[i] = i & 1 ? c_mul(rt[i >> 1], x) : rt[i >> 1];
         }
         rev[0] = 0;
-        for (int i = 0; i < n; i++) rev[i] = (rev[i >> 2] | (i & 3) << L);
+        for (int i = 0; i < n; i++)rev[i] = (rev[i >> 2] >> 2) | ((i & 3) << L);
         ln = n;
     }
     for (int i = 0; i < n; i++)
@@ -62,18 +62,18 @@ static inline void fft(cd* a, int n) {
         for (int i = 0; i < n; i += (k << 2))
             for (int j = 0; j < k; j++) {
                 cd a0 = a[i + j], a1 = c_mul(a[i + j + k], rt[j + k]);
-                cd a2 = c_mul(a[i + j + k + k], rt[(j + k)<<1]), a3 = c_mul(a[i + j + k + k], rt[3*(j + k)]);
+                cd a2 = c_mul(a[i + j + k + k], rt[(j + k)<<1]), a3 = c_mul(a[i + j + k + k+k], rt[3*(j + k)]);
                 cd a13 = c_sub(a1,a3), a13i = make_complex(-a13.imag, a13.real);
                 cd a02=c_sub(a0,a2);
                 a[i + j] =c_add(c_add(a0,a2),c_add(a1,a3));
-                a[i + j + k]=c_add(a02,a13);
+                a[i + j + k]=c_sub(a02,a13i);
                 a[i + j + k + k] = c_sub(c_add(a0, a2), c_add(a1, a3));
-                a[i + j + k * 3] = c_sub(a02, a13);
+                a[i + j + k + k + k] = c_add(a02, a13i);
             }
     }
 }
 static inline void conv(ll* a, int sa, ll* b, int sb, ll* res) {
-    int L = 32 - __builtin_clz(sa + sb - 1), n = 1 << L, i;
+    int L = 32 - __builtin_clz(sa + sb - 1),n = (L&1?2:1) << L, i;
     for (i = 0; i < n; ++i) in[i] = make_complex(0, 0);
     for (i = 0; i < sa; ++i) in[i].real = a[i];
     for (i = 0; i < sb; ++i) in[i].imag = b[i];
