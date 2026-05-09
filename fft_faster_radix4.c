@@ -59,10 +59,14 @@ static inline void fft(cd* a, int n) {
         }
     // i(a+bi) = -b+ai
     for (int k = 1; k < n; k <<= 2) {
+        int step = n >> (2 + __builtin_ctz(k));
         for (int i = 0; i < n; i += (k << 2))
             for (int j = 0; j < k; j++) {
-                cd a0 = a[i + j], a1 = c_mul(a[i + j + k], rt[j + k]);
-                cd a2 = c_mul(a[i + j + k + k], rt[(j + k)<<1]), a3 = c_mul(a[i + j + k + k+k], rt[3*(j + k)]);
+                cd a0 = a[i + j], 
+                   a1 = c_mul(a[i + j + k], rt[step*j]),
+                   a2 = c_mul(a[i + j + k + k], rt[(step*j)<<1]), 
+                   a3 = c_mul(a[i + j + k + k+k], rt[step*j*3]);
+
                 cd a13 = c_sub(a1,a3), a13i = make_complex(-a13.imag, a13.real);
                 cd a02=c_sub(a0,a2);
                 a[i + j] =c_add(c_add(a0,a2),c_add(a1,a3));
