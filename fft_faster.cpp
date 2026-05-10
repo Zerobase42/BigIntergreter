@@ -53,10 +53,10 @@ static inline void fft(double*a_r,double*a_i,int n){
             }
         }
         rev[0]=0;
-        for(int i=0;i<n;i++)rev[i]=(rev[i>>1]|(i&1)<<L)>>1;
+        for(int i=1;i<n;i++)rev[i]=(rev[i>>1]|(i&1)<<L)>>1;
         ln=n;
     }
-    for(int i=0;i<n;i++)
+    for(int i=1;i<n-1;i++)
         if(i<rev[i]){
             double t=a_r[i];
             a_r[i]=a_r[rev[i]];
