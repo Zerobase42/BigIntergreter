@@ -23,7 +23,7 @@ static inline void fft(double*a_r,double*a_i,int n){
     static int rev[MAX],ln=0;
     static double rt_r[MAX],rt_i[MAX];
     if(ln!=n){
-        int L=__builtin_ctz(n)-2;double th,x_r,x_i;
+        int L=31-__builtin_clz(n);double th,x_r,x_i;
         rt_r[0]=rt_r[1]=1.0;
         rt_i[0]=rt_i[1]=0.0;
         for(int k=2;k<n;k<<=1){
@@ -34,10 +34,10 @@ static inline void fft(double*a_r,double*a_i,int n){
             }
         }
         rev[0]=0;
-        for(int i=0;i<n;i++)rev[i]=rev[i>>2]>>2|((i&3)<<L);
+        for(int i=1;i<n;i++)rev[i]=(rev[i>>2]|((i&3)<<L))>>2;
         ln=n;
     }
-    for(int i=0;i<n;i++)
+    for(int i=1;i<n-1;i++)
         if(i<rev[i]){
             double t=a_r[i];
             a_r[i]=a_r[rev[i]];
@@ -50,12 +50,20 @@ static inline void fft(double*a_r,double*a_i,int n){
         int step=n>>(2+__builtin_ctz(k));
         for(int i=0;i<n;i+=(k<<2))
             for(int j=0;j<k;j++){
-                double z_r=rt_r[j+k]*a_r[i+j+k]-rt_i[j+k]*a_i[i+j+k],
-                       z_i=rt_r[j+k]*a_i[i+j+k]+rt_i[j+k]*a_r[i+j+k];
-                a_r[i+j+k]=a_r[i+j]-z_r;
-                a_i[i+j+k]=a_i[i+j]-z_i;
-                a_r[i+j]+=z_r;
-                a_i[i+j]+=z_i;
+                // a.real*b.real-a.imag*b.imag
+                // a.real*b.imag+a.imag*b.real
+                double a0_r=a_r[i+j],a0_i=a_i[i+j],
+                       a1_r=a_r[i+j+k]*rt_r[step*j]-a_i[i+j+k]*rt_i[step*j],
+                       a1_i=a_i[i+j+k]*rt_r[step*j]+a_r[i+j+k]*rt_i[step*j],
+                       a2_r=a_r[i+j+(k<<1)]*rt_r[step*(j<<1)]-a_i[i+j+(k<<1)]*rt_i[step*(j<<1)],
+                       a2_i=a_i[i+j+(k<<1)]*rt_r[step*(j<<1)]+a_r[i+j+(k<<1)]*rt_i[step*(j<<1)],
+                       a3_r=a_r[i+j+(k<<1)+k]*rt_r[step*(j*3)]-a_i[i+j+(k<<1)+k]*rt_i[step*(j*3)],
+                       a3_i=a_i[i+j+(k<<1)+k]*rt_r[step*(j*3)]+a_r[i+j+(k<<1)+k]*rt_i[step*(j*3)];
+
+                a_r[i+j+k]=a0_r-z_r;
+                a_i[i+j+k]=a0_i-z_i;
+                a_r[i+j]=a0_r+z_r;
+                a_i[i+j]=a0_i+z_i;
             }
     }
 }

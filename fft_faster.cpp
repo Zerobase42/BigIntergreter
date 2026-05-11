@@ -90,7 +90,7 @@ static inline void conv(ll*a,int sa,ll*b,int sb,ll*res){
         in_r[i]=r*r-im*im;
         in_i[i]=2*r*im;
     }
-    for(i=0;i<=n>>1;++i){
+    for(i=0;i<(n>>1);++i){
         int j=(n-i)&(n-1);
         double v_i_r=in_r[i],v_i_i=in_i[i],
                v_j_r=in_r[j],v_j_i=in_i[j];
