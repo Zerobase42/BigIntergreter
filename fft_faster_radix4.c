@@ -13,83 +13,90 @@
 #define DIG 4
 #define NUMLEN 1000000
 #define BASE 10000
-#define MAX 1048576
+#define MAX 1048576  // 1<<20
 const long double PI = 3.14159265358979323846;
-
-static double in_r[MAX], in_i[MAX];
+typedef struct {
+    double real, imag;
+} _complex;
+static inline _complex make_complex(double real, double imag) {
+    _complex z;
+    z.real = real;
+    z.imag = imag;
+    return z;
+}
+static inline _complex c_add(_complex a, _complex b) { return make_complex(a.real + b.real, a.imag + b.imag); }
+static inline _complex c_sub(_complex a, _complex b) { return make_complex(a.real - b.real, a.imag - b.imag); }
+static inline _complex c_mul(_complex a, _complex b) { return make_complex(a.real * b.real - a.imag * b.imag, a.real * b.imag + a.imag * b.real); }
+static inline void c_addeq(_complex* a, _complex b) {
+    a->real += b.real;
+    a->imag += b.imag;
+}
+static inline _complex c_conj(_complex a) { return make_complex(a.real, -a.imag); }
+static inline _complex c_polar(double th) { return make_complex(__builtin_cos(th), __builtin_sin(th)); }
+#define cd _complex
+static cd in[MAX];
 static ll A[MAX >> 1], B[MAX >> 1], C[MAX >> 1];
 static char io_buf[(NUMLEN << 1) + 10], tmp[20];
-static inline void fft(double* a_r, double* a_i, int n) {
+static inline void fft(cd* a, int n) {
     static int rev[MAX], ln = 0;
-    static double rt_r[MAX], rt_i[MAX];
+    static cd rt[MAX];
     if (ln != n) {
-        int L = 31 - __builtin_clz(n);
-        double th, x_r, x_i;
-        rt_r[0] = rt_r[1] = 1.0;
-        rt_i[0] = rt_i[1] = 0.0;
+        int L = __builtin_ctz(n) - 2;
+        rt[0] = rt[1] = make_complex(1.0, 0.0);
         for (int k = 2; k < n; k <<= 1) {
-            th = PI / k, x_r = __builtin_cos(th), x_i = __builtin_sin(th);
-            for (int i = k; i < k + k; i++) {
-                rt_r[i] = i & 1 ? rt_r[i >> 1] * x_r - rt_i[i >> 1] * x_i : rt_r[i >> 1];
-                rt_i[i] = i & 1 ? rt_r[i >> 1] * x_i + rt_i[i >> 1] * x_r : rt_i[i >> 1];
-            }
+            cd x = c_polar(PI / k);
+            for (int i = k; i < k + k; i++) rt[i] = i & 1 ? c_mul(rt[i >> 1], x) : rt[i >> 1];
         }
         rev[0] = 0;
-        for (int i = 1; i < n; i++) rev[i] = (rev[i >> 2] | ((i & 3) << L)) >> 2;
+        for (int i = 1; i < n; i++) rev[i] = (rev[i / 4] | ((i & 3) << L)) >> 2;
         ln = n;
     }
-    for (int i = 1; i < n - 1; i++)
+    for (int i = 0; i < n; i++)
         if (i < rev[i]) {
-            double t = a_r[i];
-            a_r[i] = a_r[rev[i]];
-            a_r[rev[i]] = t;
-            t = a_i[i];
-            a_i[i] = a_i[rev[i]];
-            a_i[rev[i]] = t;
+            cd t = a[i];
+            a[i] = a[rev[i]];
+            a[rev[i]] = t;
         }
+    // i(a+bi) = -b+ai
     for (int k = 1; k < n; k <<= 2) {
-        int step = n >> (2 + __builtin_ctz(k));
-        for (int i = 0; i < n; i += (k << 2))
+        int step = n / (k << 2);
+        for (int i = 0; i < n; i += (k << 2)) {
             for (int j = 0; j < k; j++) {
-                // a.real*b.real-a.imag*b.imag
-                // a.real*b.imag+a.imag*b.real
-                double a0_r = a_r[i + j], a0_i = a_i[i + j],
-                       a1_r = a_r[i + j + k] * rt_r[step * j] - a_i[i + j + k] * rt_i[step * j],
-                       a1_i = a_i[i + j + k] * rt_r[step * j] + a_r[i + j + k] * rt_i[step * j],
-                       a2_r = a_r[i + j + (k << 1)] * rt_r[step * (j << 1)] - a_i[i + j + (k << 1)] * rt_i[step * (j << 1)],
-                       a2_i = a_i[i + j + (k << 1)] * rt_r[step * (j << 1)] + a_r[i + j + (k << 1)] * rt_i[step * (j << 1)],
-                       a3_r = a_r[i + j + (k << 1) + k] * rt_r[step * (j * 3)] - a_i[i + j + (k << 1) + k] * rt_i[step * (j * 3)],
-                       a3_i = a_i[i + j + (k << 1) + k] * rt_r[step * (j * 3)] + a_r[i + j + (k << 1) + k] * rt_i[step * (j * 3)];
+                cd a0 = a[i + j],
+                   a1 = c_mul(a[i + j + k], rt[step * j]),
+                   a2 = c_mul(a[i + j + k * 2], rt[(step * j) << 1]),
+                   a3 = c_mul(a[i + j + k * 3], rt[step * j * 3]);
 
-                a_r[i + j + k] = a0_r - z_r;
-                a_i[i + j + k] = a0_i - z_i;
-                a_r[i + j] = a0_r + z_r;
-                a_i[i + j] = a0_i + z_i;
+                cd a13 = c_sub(a1, a3), a13i = make_complex(-a13.imag, a13.real);
+                cd a02 = c_sub(a0, a2);
+                a[i + j] = c_add(c_add(a0, a2), c_add(a1, a3));
+                a[i + j + k] = c_sub(a02, a13i);
+                a[i + j + k * 2] = c_sub(c_add(a0, a2), c_add(a1, a3));
+                a[i + j + k * 3] = c_add(a02, a13i);
             }
+        }
     }
 }
 static inline void conv(ll* a, int sa, ll* b, int sb, ll* res) {
     int L = 32 - __builtin_clz(sa + sb - 1), n = (L & 1 ? 2 : 1) << L, i;
-    for (i = 0; i < sa; ++i) in_r[i] = a[i];
-    for (i = 0; i < sb; ++i) in_i[i] = b[i];
-    fft(in_r, in_i, n);
+    for (i = 0; i < n; ++i) in[i] = make_complex(0, 0);
+    for (i = 0; i < sa; ++i) in[i].real = a[i];
+    for (i = 0; i < sb; ++i) in[i].imag = b[i];
+    fft(in, n);
     for (i = 0; i < n; ++i) {
-        double r = in_r[i], im = in_i[i];
-        in_r[i] = r * r - im * im;
-        in_i[i] = 2 * r * im;
+        double r = in[i].real, im = in[i].imag;
+        in[i].real = r * r - im * im;
+        in[i].imag = 2 * r * im;
     }
-    for (i = 0; i <= n >> 1; ++i) {
+    for (i = 0; i <= n >> 1; i++) {
         int j = (n - i) & (n - 1);
-        double v_i_r = in_r[i], v_i_i = in_i[i],
-               v_j_r = in_r[j], v_j_i = in_i[j];
-        in_r[i] = v_j_r - v_i_r;
-        in_i[i] = v_j_i + v_i_i;
-        in_r[j] = v_i_r - v_j_r;
-        in_i[j] = v_i_i + v_j_i;
+        cd val_i = in[i], val_j = in[j];
+        in[i] = c_sub(val_j, c_conj(val_i));
+        in[j] = c_sub(val_i, c_conj(val_j));
     }
-    fft(in_r, in_i, n);
+    fft(in, n);
     for (i = 0; i < sa + sb - 1; ++i) {
-        double val = in_i[i] / (4 * n);
+        double val = in[i].imag / (4 * n);
         res[i] = (ll)(val > 0 ? val + 0.5 : val - 0.5);
     }
 }
