@@ -2,6 +2,7 @@
 #include <unistd.h>
 #else
 #include <stdio.h>
+#include <string.h>
 #define syscall(a, b, buf, pos) ((a) == 0 ? read(b, buf, pos) : write(b, buf, pos))
 #define read(n, buf, pos) fread(buf, 1, pos, stdin)
 #define write(n, wbuf, pos) fwrite(wbuf, 1, pos, stdout)
@@ -37,19 +38,16 @@ static inline _complex c_polar(double th) { return make_complex(__builtin_cos(th
 static cd in[MAX];
 static ll A[MAX >> 1], B[MAX >> 1], C[MAX >> 1];
 static char io_buf[(NUMLEN << 1) + 10], tmp[20];
-static inline void fft(cd* a, int n) {
+static inline void fft(cd* a, int L) {
     static int rev[MAX], ln = 0;
     static cd rt[MAX];
+    int n = 1 << L;
     if (ln != n) {
-        int L = __builtin_ctz(n) - 2;
-        rt[0] = rt[1] = make_complex(1.0, 0.0);
-        for (int k = 2; k < n; k <<= 1) {
-            cd x = c_polar(PI / k);
-            for (int i = k; i < k + k; i++) rt[i] = i & 1 ? c_mul(rt[i >> 1], x) : rt[i >> 1];
-        }
-        rev[0] = 0;
-        for (int i = 1; i < n; i++) rev[i] = (rev[i / 4] | ((i & 3) << L)) >> 2;
         ln = n;
+        for (int i = 0; i < n; i++) {
+            rt[i] = c_polar(-2.0 * PI * i / n);
+            rev[i] = (rev[i >> 2] | ((i & 3) << L)) >> 2;
+        }
     }
     for (int i = 0; i < n; i++)
         if (i < rev[i]) {
@@ -58,48 +56,57 @@ static inline void fft(cd* a, int n) {
             a[rev[i]] = t;
         }
     // i(a+bi) = -b+ai
-    for (int k = 1; k < n; k <<= 2) {
-        int step = n / (k << 2);
-        for (int i = 0; i < n; i += (k << 2)) {
-            for (int j = 0; j < k; j++) {
-                cd a0 = a[i + j],
-                   a1 = c_mul(a[i + j + k], rt[step * j]),
-                   a2 = c_mul(a[i + j + k * 2], rt[(step * j) << 1]),
-                   a3 = c_mul(a[i + j + k * 3], rt[step * j * 3]);
 
-                cd a13 = c_sub(a1, a3), a13i = make_complex(-a13.imag, a13.real);
-                cd a02 = c_sub(a0, a2);
-                a[i + j] = c_add(c_add(a0, a2), c_add(a1, a3));
-                a[i + j + k] = c_sub(a02, a13i);
-                a[i + j + k * 2] = c_sub(c_add(a0, a2), c_add(a1, a3));
-                a[i + j + k * 3] = c_add(a02, a13i);
+    for (int k = 1, step = n >> 2; k < n; k <<= 2, step >>= 2) {
+        for (int i = 0; i < n; i += k << 2) {
+            int l = k << 1;
+            int m = l | k;
+            for (int j = 0; j < k; j++) {
+                int sj = step * j;
+                int sj2 = sj << 1;
+                int sj3 = sj + sj2;
+
+                cd a0 = a[i | j];
+                cd a1 = c_mul(a[i | j | k], rt[sj]);
+                cd a2 = c_mul(a[i | j | l], rt[sj2]);
+                cd a3 = c_mul(a[i | j | m], rt[sj3]);
+
+                cd add02 = c_add(a0, a2);
+                cd sub02 = c_sub(a0, a2);
+                cd add13 = c_add(a1, a3);
+                cd sub13i = make_complex(a3.imag - a1.imag, a1.real - a3.real);
+
+                a[i | j] = c_add(add02, add13);
+                a[i | j | k] = c_sub(sub02, sub13i);
+                a[i | j | l] = c_sub(add02, add13);
+                a[i | j | m] = c_add(sub02, sub13i);
             }
         }
     }
 }
 static inline void conv(ll* a, int sa, ll* b, int sb, ll* res) {
-    int L = 32 - __builtin_clz(sa + sb - 1), n = (L & 1 ? 2 : 1) << L, i;
-    for (i = 0; i < n; ++i) in[i] = make_complex(0, 0);
+    int L = (sa + sb) <= 2 ? 0 : 32 - __builtin_clz(sa + sb - 2);
+    L += (L & 1);
+    int n = 1 << L, i;
+
+    memset(in, 0, sizeof(in[0]) * n);
     for (i = 0; i < sa; ++i) in[i].real = a[i];
     for (i = 0; i < sb; ++i) in[i].imag = b[i];
-    fft(in, n);
+
+    fft(in, L);
+
     for (i = 0; i < n; ++i) {
         double r = in[i].real, im = in[i].imag;
         in[i].real = r * r - im * im;
         in[i].imag = 2 * r * im;
     }
-    for (i = 0; i <= n >> 1; i++) {
-        int j = (n - i) & (n - 1);
-        cd val_i = in[i], val_j = in[j];
-        in[i] = c_sub(val_j, c_conj(val_i));
-        in[j] = c_sub(val_i, c_conj(val_j));
-    }
-    fft(in, n);
-    for (i = 0; i < sa + sb - 1; ++i) {
-        double val = in[i].imag / (4 * n);
-        res[i] = (ll)(val > 0 ? val + 0.5 : val - 0.5);
-    }
+
+    fft(in, L);
+
+    res[0] = (ll)(in[0].imag + 0.5) >> (L + 1);
+    for (i = 1; i < sa + sb - 1; ++i) res[i] = (ll)(in[n - i].imag + 0.5) >> (L + 1);
 }
+
 int main() {
     int len = syscall(0, 0, io_buf, (NUMLEN << 1) + 3), mid = 0, idx = 0, p, i, j, l;
     io_buf[len] = 0;
