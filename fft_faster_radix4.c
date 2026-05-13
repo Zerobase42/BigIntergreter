@@ -89,7 +89,7 @@ static inline void conv(ll* a, int sa, ll* b, int sb, ll* res) {
     L += (L & 1);
     int n = 1 << L, i;
 
-    memset(in, 0, sizeof(in[0]) * n);
+    for(i=0;i<n;i++)in[i].real=0,in[i].imag=0;
     for (i = 0; i < sa; ++i) in[i].real = a[i];
     for (i = 0; i < sb; ++i) in[i].imag = b[i];
 

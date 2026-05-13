@@ -6,9 +6,9 @@
 #define write(a,b,c)fwrite(b,1,c,stdout)
 #endif
 #pragma GCC optimize("O3,unroll-loops")
-#include<algorithm>
-#include<string>
-#include<vector>
+#include <algorithm>
+#include <string>
+#include <vector>
 using namespace std;
 using ll=long long;
 using i128=__int128_t;
@@ -136,35 +136,19 @@ vector<int>multiply_bigint(const string&A,const string&B){
     return res;
 }
 char outbuf[1<<22];
-int main(){
-    static char s1[1<<20];
-    static char s2[1<<20];
-    int p=0;
-    char ch;
-    while((ch=getchar())<=32);
-    do{
-        s1[p++]=ch;
-    }while((ch=getchar())>32);
-    s1[p]=0;
-    p=0;
-    while((ch=getchar())<=32);
-    do{
-        s2[p++]=ch;
-    }while((ch=getchar())>32);
-    s2[p]=0;
-    auto v=multiply_bigint(s1,s2);
-    int pos=0;
-    int n=v.size();
-    pos+=sprintf(outbuf+pos,"%d",v.back());
-    for(int i=n-2;i>=0;i--){
-        int x=v[i];
-        outbuf[pos++]='0'+x/1000;
-        x%=1000;
-        outbuf[pos++]='0'+x/100;
-        x%=100;
-        outbuf[pos++]='0'+x/10;
-        x%=10;
-        outbuf[pos++]='0'+x;
+int main() {
+    static char s1[1 << 20], s2[1 << 20];
+
+    // scanf로 문자열 입력 받기
+    if (scanf("%s %s", s1, s2) != 2) return 0;
+
+    auto v = multiply_bigint(s1, s2);
+    if (v.empty()) return 0;
+
+    // 결과 출력
+    printf("%d", v.back());  // 가장 앞자리 출력
+    for (int i = (int)v.size() - 2; i >= 0; i--) {
+        printf("%04d", v[i]);  // 4자리씩 맞추어 출력
     }
-    write(1,outbuf,pos);
+    return 0;
 }

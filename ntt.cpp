@@ -66,25 +66,41 @@ vector<ll> multiply(poly& _a, poly& _b) {
 int main() {
     ios_base::sync_with_stdio(0);
     cin.tie(0);
+    const int DIG = 4;
+    const int BASE = 10000;
     string a, b;
     cin >> a >> b;
     vector<ll> x, y;
-    x.reserve(a.size());
-    y.reserve(b.size());
-    for (int i = a.size() - 1; i >= 0; i--) x.push_back(a[i] - '0');
-    for (int i = b.size() - 1; i >= 0; i--) y.push_back(b[i] - '0');
+    for (int i = (int)a.size(); i > 0; i -= DIG) {
+        int l = max(0, i - DIG);
+        x.push_back(stoll(a.substr(l, i - l)));
+    }
+    for (int i = (int)b.size(); i > 0; i -= DIG) {
+        int l = max(0, i - DIG);
+        y.push_back(stoll(b.substr(l, i - l)));
+    }
     vector<ll> v = multiply(x, y);
     v.push_back(0);
-    for (int i = 0; i < v.size() - 1; i++) {
+
+    for (int i = 0; i + 1 < (int)v.size(); i++) {
         if (v[i] < 0) {
-            int b = (abs(v[i]) + 9) / 10;
-            v[i + 1] -= b;
-            v[i] += b * 10;
+            ll borrow = (-v[i] + BASE - 1) / BASE;
+            v[i + 1] -= borrow;
+            v[i] += borrow * BASE;
         } else {
-            v[i + 1] += v[i] / 10;
-            v[i] %= 10;
+            v[i + 1] += v[i] / BASE;
+            v[i] %= BASE;
         }
     }
-    while (v.size() > 1 && v.back() == 0) v.pop_back();
-    for (int i = v.size() - 1; i >= 0; i--) cout << v[i];
+
+    while (v.size() > 1 && v.back() == 0)v.pop_back();
+
+    cout << v.back();
+
+    char buf[20];
+
+    for (int i = (int)v.size() - 2; i >= 0; i--) {
+        snprintf(buf, sizeof(buf), "%0*lld", DIG, v[i]);
+        cout << buf;
+    }
 }
