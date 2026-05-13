@@ -30,7 +30,10 @@ static inline _complex c_conj(_complex a) { return make_complex(a.real, -a.imag)
 static inline _complex c_polar(double th) { return make_complex(__builtin_cos(th), __builtin_sin(th)); }
 #define cd _complex
 static cd in[MAX];
-static ll A[MAX >> 1], B[MAX >> 1], C[MAX >> 1];
+#define ARR ((NUMLEN + DIG - 1) / DIG + 5)
+
+static ll A[ARR], B[ARR];
+static ll C[ARR << 1];
 static char io_buf[(NUMLEN << 1) + 10], tmp[20];
 static inline void fft(cd* a, int n) {
     static int rev[MAX], ln = 0;
