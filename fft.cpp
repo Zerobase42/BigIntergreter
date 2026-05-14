@@ -52,15 +52,15 @@ string multy(const string& A,const string& B){
 	string sA=na?A.substr(1):A,sB=nb?B.substr(1):B;
 	if(sA=="0"||sB=="0")return "0";
 	vector<int>a,b;
-	for(int i=sA.size();i>=0;i-=DIG){
-		int x=0,l=max(0,i-DIG);
-		for(int j=l;j<i;j++)x=x*10+A[j]-'0';
-		a.push_back(x);
+	for(int i=sA.size();i>0;i-=DIG){
+	    int x=0,l=max(0,i-DIG);
+	    for(int j=l;j<i;j++)x=x*10+sA[j]-'0';
+	    a.push_back(x);
 	}
-	for(int i=sB.size();i>=0;i-=DIG){
-		int x=0,l=max(0,i-DIG);
-		for(int j=l;j<i;j++)x=x*10+B[j]-'0';
-		b.push_back(x);
+	for(int i=sB.size();i>0;i-=DIG){
+	    int x=0,l=max(0,i-DIG);
+	    for(int j=l;j<i;j++)x=x*10+sB[j]-'0';
+	    b.push_back(x);
 	}
 	vector<long long>A64(a.begin(),a.end()),B64(b.begin(),b.end());
 	vector<long long>c=conv(A64,B64);

@@ -16,6 +16,7 @@
 #define BASE 10000
 #define MAX 1048576  // 1<<20
 const long double PI = 3.14159265358979323846;
+/*
 typedef struct {
     double real, imag;
 } _complex;
@@ -37,18 +38,23 @@ static inline void c_addeq(_complex* a, _complex b) {
 static inline _complex c_conj(_complex a) { return make_complex(a.real, -a.imag); }
 static inline _complex c_polar(double th) { return make_complex(__builtin_cos(th), __builtin_sin(th)); }
 #define cd _complex
-static cd in[MAX];
+*/
+static double in_r[MAX], in_i[MAX];
 static ll A[MAX >> 1], B[MAX >> 1], C[MAX >> 1];
 static char io_buf[(NUMLEN << 1) + 10], tmp[20];
 
 int ln = 0;
-cd rt[MAX];
+static double rt_r[MAX], rt_i[MAX];
 
-static inline void fft_dif(cd* a, int L) {
+static inline void fft_dif(double* a_r, double* a_i, int L) {
     int n = 1 << L;
     if (ln != n) {
         ln = n;
-        for (int i = 0; i < n; i++) rt[i] = c_polar(-2.0 * PI * i / n);
+        for (int i = 0; i < n; i++) {
+            double th = -2.0 * PI * i / n;
+            rt_r[i] = __builtin_cos(th);
+            rt_i[i] = __builtin_sin(th);
+        }
     }
 
     for (int k = n >> 2, step = 1; k >= 1; k >>= 2, step <<= 2) {
@@ -60,35 +66,43 @@ static inline void fft_dif(cd* a, int L) {
                 int sj2 = sj << 1;
                 int sj3 = sj + sj2;
 
-                cd a0 = a[i | j];
-                cd a1 = a[i | j | k];
-                cd a2 = a[i | j | l];
-                cd a3 = a[i | j | m];
+                double a0_r = a_r[i | j], a0_i = a_i[i | j];
+                double a1_r = a_r[i | j | k], a1_i = a_i[i | j | k];
+                double a2_r = a_r[i | j | l], a2_i = a_i[i | j | l];
+                double a3_r = a_r[i | j | m], a3_i = a_i[i | j | m];
 
-                cd add02 = c_add(a0, a2);
-                cd sub02 = c_sub(a0, a2);
-                cd add13 = c_add(a1, a3);
-                cd sub13i = make_complex(a3.imag - a1.imag, a1.real - a3.real);
+                double add02_r = a0_r + a2_r, add02_i = a0_i + a2_i;
+                double sub02_r = a0_r - a2_r, sub02_i = a0_i - a2_i;
+                double add13_r = a1_r + a3_r, add13_i = a1_i + a3_i;
+                double sub13i_r = a3_i - a1_i, sub13i_i = a1_r - a3_r;
 
-                cd r0 = c_add(add02, add13);
-                cd r1 = c_sub(sub02, sub13i);
-                cd r2 = c_sub(add02, add13);
-                cd r3 = c_add(sub02, sub13i);
+                double r0_r = add02_r + add13_r, r0_i = add02_i + add13_i;
+                double r1_r = sub02_r - sub13i_r, r1_i = sub02_i - sub13i_i;
+                double r2_r = add02_r - add13_r, r2_i = add02_i - add13_i;
+                double r3_r = sub02_r + sub13i_r, r3_i = sub02_i + sub13i_i;
 
-                a[i | j] = r0;
-                a[i | j | k] = c_mul(r1, rt[sj]);
-                a[i | j | l] = c_mul(r2, rt[sj2]);
-                a[i | j | m] = c_mul(r3, rt[sj3]);
+                a_r[i | j] = r0_r;
+                a_i[i | j] = r0_i;
+                a_r[i | j | k] = r1_r * rt_r[sj] - r1_i * rt_i[sj];
+                a_i[i | j | k] = r1_r * rt_i[sj] + r1_i * rt_r[sj];
+                a_r[i | j | l] = r2_r * rt_r[sj2] - r2_i * rt_i[sj2];
+                a_i[i | j | l] = r2_r * rt_i[sj2] + r2_i * rt_r[sj2];
+                a_r[i | j | m] = r3_r * rt_r[sj3] - r3_i * rt_i[sj3];
+                a_i[i | j | m] = r3_r * rt_i[sj3] + r3_i * rt_r[sj3];
             }
         }
     }
 }
 
-static inline void ifft_dit(cd* a, int L) {
+static inline void ifft_dit(double* a_r, double* a_i, int L) {
     int n = 1 << L;
     if (ln != n) {
         ln = n;
-        for (int i = 0; i < n; i++) rt[i] = c_polar(-2.0 * PI * i / n);
+        for (int i = 0; i < n; i++) {
+            double th = 2.0 * PI * i / n;
+            rt_r[i] = __builtin_cos(th);
+            rt_i[i] = __builtin_sin(th);
+        }
     }
 
     for (int k = 1, step = n >> 2; k < n; k <<= 2, step >>= 2) {
@@ -100,20 +114,27 @@ static inline void ifft_dit(cd* a, int L) {
                 int sj2 = sj << 1;
                 int sj3 = sj + sj2;
 
-                cd a0 = a[i | j];
-                cd a1 = c_mul_conj(a[i | j | k], rt[sj]);
-                cd a2 = c_mul_conj(a[i | j | l], rt[sj2]);
-                cd a3 = c_mul_conj(a[i | j | m], rt[sj3]);
+                double a0_r = a_r[i | j], a0_i = a_i[i | j];
+                double a1_r = a_r[i | j | k] * rt_r[sj] + a_i[i | j | k] * rt_i[sj];
+                double a1_i = a_i[i | j | k] * rt_r[sj] - a_r[i | j | k] * rt_i[sj];
+                double a2_r = a_r[i | j | l] * rt_r[sj2] + a_i[i | j | l] * rt_i[sj2];
+                double a2_i = a_i[i | j | l] * rt_r[sj2] - a_r[i | j | l] * rt_i[sj2];
+                double a3_r = a_r[i | j | m] * rt_r[sj3] + a_i[i | j | m] * rt_i[sj3];
+                double a3_i = a_i[i | j | m] * rt_r[sj3] - a_r[i | j | m] * rt_i[sj3];
 
-                cd add02 = c_add(a0, a2);
-                cd sub02 = c_sub(a0, a2);
-                cd add13 = c_add(a1, a3);
-                cd sub13i = make_complex(a1.imag - a3.imag, a3.real - a1.real);
+                double add02_r = a0_r + a2_r, add02_i = a0_i + a2_i;
+                double sub02_r = a0_r - a2_r, sub02_i = a0_i - a2_i;
+                double add13_r = a1_r + a3_r, add13_i = a1_i + a3_i;
+                double sub13i_r = a1_i - a3_i, sub13i_i = a3_r - a1_r;
 
-                a[i | j] = c_add(add02, add13);
-                a[i | j | k] = c_sub(sub02, sub13i);
-                a[i | j | l] = c_sub(add02, add13);
-                a[i | j | m] = c_add(sub02, sub13i);
+                a_r[i | j] = add02_r + add13_r;
+                a_i[i | j] = add02_i + add13_i;
+                a_r[i | j | k] = sub02_r - sub13i_r;
+                a_i[i | j | k] = sub02_i - sub13i_i;
+                a_r[i | j | l] = add02_r - add13_r;
+                a_i[i | j | l] = add02_i - add13_i;
+                a_r[i | j | m] = sub02_r + sub13i_r;
+                a_i[i | j | m] = sub02_i + sub13i_i;
             }
         }
     }
@@ -123,21 +144,18 @@ static inline void conv(ll* a, int sa, ll* b, int sb, ll* res) {
     int L = (sa + sb) <= 2 ? 0 : 32 - __builtin_clz(sa + sb - 2);
     L += (L & 1);
     int n = 1 << L, i;
+    for (i = 0; i < n; i++) in_r[i] = i < sa ? a[i] : 0, in_i[i] = i < sb ? b[i] : 0;
 
-    for (i = 0; i < n; i++) in[i].real = in[i].imag = 0;
-    for (i = 0; i < sa; ++i) in[i].real = a[i];
-    for (i = 0; i < sb; ++i) in[i].imag = b[i];
-
-    fft_dif(in, L);
+    fft_dif(in_r, in_i, L);
     for (i = 0; i < n; ++i) {
-        double r = in[i].real, im = in[i].imag;
-        in[i].real = (r + im) * (r - im);
-        in[i].imag = 2 * r * im;
+        double r = in_r[i], im = in_i[i];
+        in_r[i] = (r + im) * (r - im);
+        in_i[i] = 2 * r * im;
     }
 
-    ifft_dit(in, L);
+    ifft_dit(in_r, in_i, L);
     double invn = 0.5 / n;
-    for (i = 0; i < sa + sb - 1; ++i) res[i] = (ll)(in[i].imag * invn + 0.5);
+    for (i = 0; i < sa + sb - 1; ++i) res[i] = (ll)(in_i[i] * invn + 0.5);
 }
 
 int main() {
