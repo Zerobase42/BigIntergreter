@@ -16,29 +16,7 @@
 #define BASE 10000
 #define MAX 1048576  // 1<<20
 const long double PI = 3.14159265358979323846;
-/*
-typedef struct {
-    double real, imag;
-} _complex;
-static inline _complex make_complex(double real, double imag) {
-    _complex z;
-    z.real = real;
-    z.imag = imag;
-    return z;
-}
-static inline _complex c_add(_complex a, _complex b) { return make_complex(a.real + b.real, a.imag + b.imag); }
-static inline _complex c_sub(_complex a, _complex b) { return make_complex(a.real - b.real, a.imag - b.imag); }
-static inline _complex c_mul(_complex a, _complex b) { return make_complex(a.real * b.real - a.imag * b.imag, a.real * b.imag + a.imag * b.real); }
-static inline _complex c_mul_conj(_complex a, _complex b) { return make_complex(a.real * b.real + a.imag * b.imag, a.imag * b.real - a.real * b.imag); }
 
-static inline void c_addeq(_complex* a, _complex b) {
-    a->real += b.real;
-    a->imag += b.imag;
-}
-static inline _complex c_conj(_complex a) { return make_complex(a.real, -a.imag); }
-static inline _complex c_polar(double th) { return make_complex(__builtin_cos(th), __builtin_sin(th)); }
-#define cd _complex
-*/
 static double in_r[MAX], in_i[MAX];
 static ll A[MAX >> 1], B[MAX >> 1], C[MAX >> 1];
 static char io_buf[(NUMLEN << 1) + 10], tmp[20];

@@ -14,7 +14,7 @@
 #define NUMLEN 1000000
 #define BASE 10000
 #define MAX 1048576
-const long double PI = 3.14159265358979323846;
+const double PI = 3.14159265358979323846;
 static double in_r[MAX], in_i[MAX];
 #define ARR ((NUMLEN + DIG - 1) / DIG + 5)
 static ll A[ARR], B[ARR], C[ARR << 1];
@@ -28,12 +28,13 @@ static inline void fft(double* a_r, double* a_i, int n) {
         rt_r[0] = rt_r[1] = 1.0;
         rt_i[0] = rt_i[1] = 0.0;
         for (int k = 2; k < n; k <<= 1) {
-            register double x_r = __builtin_cos(PI / k), x_i = __builtin_sin(PI / k);
+            register double x_r,x_i;
+            __builtin_sincos(PI/k, &x_i, &x_r);
             for (int i = k; i < k + k; i++) {
                 rt_r[i] = i & 1 ? rt_r[i >> 1] * x_r - rt_i[i >> 1] * x_i : rt_r[i >> 1];
                 rt_i[i] = i & 1 ? rt_r[i >> 1] * x_i + rt_i[i >> 1] * x_r : rt_i[i >> 1];
-            }
-        }
+            }       
+        }       
         rev[0] = 0;
         for (int i = 0; i < n; i++) rev[i] = (rev[i >> 1] | (i & 1) << L) >> 1;
         ln = n;
