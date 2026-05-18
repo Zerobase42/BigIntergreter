@@ -15,7 +15,7 @@
 #define NUMLEN 1000000
 #define BASE 10000
 #define MAX 1048576  // 1<<20
-const long double PI = 3.14159265358979323846;
+const long double MIPI2 = -6.28318530717958647692;
 
 static double in_r[MAX], in_i[MAX];
 static ll A[MAX >> 1], B[MAX >> 1], C[MAX >> 1];
@@ -29,12 +29,10 @@ static inline void fft_dif(double* a_r, double* a_i, int L) {
     if (ln != n) {
         ln = n;
         for (int i = 0; i < n; i++) {
-            double th = -2.0 * PI * i / n;
-            rt_r[i] = __builtin_cos(th);
-            rt_i[i] = __builtin_sin(th);
+            double th = MIPI2 * i / n;
+            __builtin_sincos(th, &rt_i[i], &rt_r[i]);
         }
     }
-
     for (int k = n >> 2, step = 1; k >= 1; k >>= 2, step <<= 2) {
         int l = k << 1;
         int m = l | k;
@@ -77,9 +75,8 @@ static inline void ifft_dit(double* a_r, double* a_i, int L) {
     if (ln != n) {
         ln = n;
         for (int i = 0; i < n; i++) {
-            double th = 2.0 * PI * i / n;
-            rt_r[i] = __builtin_cos(th);
-            rt_i[i] = __builtin_sin(th);
+            double th = MIPI2 * i / n;
+            __builtin_sincos(th, &rt_i[i], &rt_r[i]);
         }
     }
 
