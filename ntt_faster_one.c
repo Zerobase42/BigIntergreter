@@ -29,7 +29,7 @@ ll powmod(ll a, ll b) {
 }
 static ll root[MAX >> 1];
 static int rev[MAX];
-void ntt(ll* f, int n, bool inv = 0) {
+void ntt(ll* f, int n, char inv) {
     int L = 31 - __builtin_clz(n);
     for (int i = 1; i < n; i++) {
         rev[i] = (rev[i >> 1] | (i & 1) << L) >> 1;
