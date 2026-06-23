@@ -110,13 +110,10 @@ vector<int>multiply_bigint(const string&A,const string&B){
     vector<ll>c(n);
     static const ll m1=MOD1;
     static const ll m2=MOD2;
-    static const ll inv_m1=
-        modpow(m1,m2-2,m2);
+    static const ll inv_m1=modpow(m1,m2-2,m2);
     for(int i=0;i<n;i++){
-        ll t=
-            (y[i]-x[i])%m2;
-        if(t<0)
-            t+=m2;
+        ll t=(y[i]-x[i])%m2;
+        if(t<0)t+=m2;
         t=(i128)t*inv_m1%m2;
         c[i]=x[i]+(i128)m1*t;
     }
@@ -135,7 +132,6 @@ vector<int>multiply_bigint(const string&A,const string&B){
     vector<int>res(c.begin(),c.end());
     return res;
 }
-char outbuf[1<<22];
 int main() {
     static char s1[1 << 20], s2[1 << 20];
 
