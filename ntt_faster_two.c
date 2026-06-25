@@ -133,8 +133,14 @@ static __inline void ntt2(ll*f,int n,unsigned char inv){
     }
 }
 static ll a[MAX],b[MAX],c1[MAX],c2[MAX];
-static __inline void conv1(ll*_a,ll*_b,int n,ll*c){
+static __inline void conv1(ll*_a,int na,ll*_b,int nb,ll*c){
+    int L=32-__builtin_clz(na+nb-2),n=1<<L;
     init_root1(n,0);
+    #pragma omp parallel for schedule(static)
+    for(int i=0;i<n;i++){
+        a[i]=(i<na)?_a[i]:0;
+        b[i]=(i<nb)?_b[i]:0;
+    }
     ntt1(a,n,0);
     ntt1(b,n,0);
     #pragma omp parallel for schedule(static)
@@ -144,8 +150,14 @@ static __inline void conv1(ll*_a,ll*_b,int n,ll*c){
     init_root1(n,1);
     ntt1(c,n,1);
 }
-static __inline void conv2(ll*_a,ll*_b,int n,ll*c){
+static __inline void conv2(ll*_a,int na,ll*_b,int nb,ll*c){
+    int L=32-__builtin_clz(na+nb-2),n=1<<L;
     init_root2(n,0);
+    #pragma omp parallel for schedule(static)
+    for(int i=0;i<n;i++){
+        a[i]=(i<na)?_a[i]:0;
+        b[i]=(i<nb)?_b[i]:0;
+    }
     ntt2(a,n,0);
     ntt2(b,n,0);
     #pragma omp parallel for schedule(static)
@@ -156,21 +168,9 @@ static __inline void conv2(ll*_a,ll*_b,int n,ll*c){
     ntt2(c,n,1);
 }
 static __inline void conv(ll*_a,int na,ll*_b,int nb,ll*c){
-    /*
-    memcpy(a,_a,na*sizeof(ll));
-    memcpy(b,_b,nb*sizeof(ll));
-    memset(a+na,0,(n-na)*sizeof(ll));
-    memset(b+nb,0,(n-nb)*sizeof(ll));
-    */
-    int N=na+nb-1;
-    #pragma omp parallel for schedule(static)
-    for(int i=0;i<N;i++){
-        a[i]=(i<na)?_a[i]:0;
-        b[i]=(i<nb)?_b[i]:0;
-    }
-    int n=1<<(32-__builtin_clz(N-1));
-    conv1(a,b,n,c1);
-    conv2(a,b,n,c2);
+    conv1(_a,na,_b,nb,c1);
+    conv2(_a,na,_b,nb,c2);
+    int n=na+nb-1;
     #pragma omp parallel for schedule(static)
     for(int i=0;i<n;i++){
         ll x=c1[i],y=c2[i];
@@ -228,14 +228,3 @@ int main(){
     }
     syscall(1,1,io_buf,pos);
 }
-/*conv1 완료 후 a,b 재사용하고 c1,c2를 A,B 쪽 버퍼와 공유하면 16MB 이상 절약 가능.
-
-10. 가장 효과 큰 순서
-rev 재계산 제거
-root1/root2 미리 계산
-memcpy+memset
-CRT inverse 상수화
-Barrett/Montgomery 적용
-메모리 버퍼 재사용
-
-특히 rev[] 재계산 제거 + root 재사용만 해도 대형 입력에서 체감 성능 향상이 꽤 큽니다.*/
