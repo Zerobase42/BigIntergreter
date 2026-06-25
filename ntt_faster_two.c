@@ -45,7 +45,7 @@ static __inline ll powmod2(ll a,ll b){
     return ret;
 }
 static ll root[MAX>>1];
-static int rev[MAX];
+static int rev[MAX],lastRev;
 static __inline void init_root1(int n,unsigned char inv){
     ll ang=powmod1(w1,(mod1-1)/n);
     if(inv) ang=powmod1(ang,mod1-2);
@@ -63,9 +63,15 @@ static __inline void init_root2(int n,unsigned char inv){
     }
 }
 static __inline void ntt1(ll*f,int n,unsigned char inv){
-    int L=31-__builtin_clz(n);
-    for(int i=1;i<n;i++){
-        rev[i]=(rev[i>>1]|(i&1)<<L)>>1;
+    if(lastRev!=n){
+        int L=31-__builtin_clz(n);
+        for(int i=1;i<n;i++){
+            rev[i]=(rev[i>>1]|(i&1)<<L)>>1;
+        }
+        lastRev=n;
+    }
+    #pragma omp parallel for schedule(static)
+    for(int i=1;i<n-1;i++){
         if(rev[i]<i){
             ll tmp=f[i];
             f[i]=f[rev[i]];
@@ -98,9 +104,15 @@ static __inline void ntt1(ll*f,int n,unsigned char inv){
     }
 }
 static __inline void ntt2(ll*f,int n,unsigned char inv){
-    int L=31-__builtin_clz(n);
-    for(int i=1;i<n;i++){
-        rev[i]=(rev[i>>1]|(i&1)<<L)>>1;
+    if(lastRev!=n){
+        int L=31-__builtin_clz(n);
+        for(int i=1;i<n;i++){
+            rev[i]=(rev[i>>1]|(i&1)<<L)>>1;
+        }
+        lastRev=n;
+    }
+    #pragma omp parallel for schedule(static)
+    for(int i=1;i<n-1;i++){
         if(rev[i]<i){
             ll tmp=f[i];
             f[i]=f[rev[i]];
