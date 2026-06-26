@@ -21,11 +21,13 @@ int DIG=(int)((log10(M)-log10(N))/2.0);
 #define NUMLEN 1000000
 #define BASE 1000000// 10^DIG
 #define MAX 1048576 // 2^N <= NUMLEN
-const ll w1=3;
-const ll w2=3;
-const ll mod1=998244353;
-const ll mod2=1004535809;
-const ll inv_mod1=669690699;// powmod(mod1,mod2-2,mod2)
+#ifndef __cplusplus
+const
+#else
+constexpr
+#endif
+ll w1=3,w2=3,mod1=998244353,mod2=1004535809,inv_mod1=669690699;// powmod(mod1,mod2-2,mod2)
+
 static __inline ll powmod1(ll a,ll b){
     ll ret=1;
     while(b){
@@ -44,7 +46,7 @@ static __inline ll powmod2(ll a,ll b){
     }
     return ret;
 }
-static ll root[MAX>>1];
+static unsigned root[MAX>>1];
 static int rev[MAX],lastRev;
 static __inline void init_root1(int n,unsigned char inv){
     ll ang=powmod1(w1,(mod1-1)/n);
@@ -70,7 +72,6 @@ static __inline void ntt1(ll*f,int n,unsigned char inv){
         }
         lastRev=n;
     }
-    #pragma omp parallel for schedule(static)
     for(int i=1;i<n-1;i++){
         if(rev[i]<i){
             ll tmp=f[i];
@@ -78,26 +79,23 @@ static __inline void ntt1(ll*f,int n,unsigned char inv){
             f[rev[i]]=tmp;
         }
     }
-    ll ang=powmod1(w1,(mod1-1)/n);
-    if(inv)ang=powmod1(ang,mod1-2);
-    for(int i=2;i<=n;i<<=1){
-        int step=n/i;
-        #pragma omp parallel for schedule(static)
-        for(int j=0;j<n;j+=i){
-            for(int k=0;k<(i>>1);k++){
-                ll u=f[j|k];
-                ll v=f[j|k|i>>1]*root[step*k]%mod1;
-                u+=v,v=u-(v<<1);
+    for(int len=2; len<=n; len<<=1){
+        int step=n/len;
+        for(int j=0;j<n;j+=len){
+            for(int k=0;k<(len>>1);k++){
+                ll u=f[j+k];
+                ll v=f[j+k+(len>>1)]*root[step*k]%mod1;
+                u+=v;
+                v=u-(v<<1);
                 if(u>=mod1)u-=mod1;
                 if(v<0)v+=mod1;
-                f[j|k]=u;
-                f[j|k|i>>1]=v;
+                f[j+k]=u;
+                f[j+k+(len>>1)]=v;
             }
         }
     }
     if(inv){
         ll t=powmod1(n,mod1-2);
-        #pragma omp parallel for schedule(static)
         for(int i=0;i<n;i++){
             f[i]=f[i]*t%mod1;
         }
@@ -111,7 +109,6 @@ static __inline void ntt2(ll*f,int n,unsigned char inv){
         }
         lastRev=n;
     }
-    #pragma omp parallel for schedule(static)
     for(int i=1;i<n-1;i++){
         if(rev[i]<i){
             ll tmp=f[i];
@@ -119,20 +116,18 @@ static __inline void ntt2(ll*f,int n,unsigned char inv){
             f[rev[i]]=tmp;
         }
     }
-    ll ang=powmod2(w2,(mod2-1)/n);
-    if(inv)ang=powmod2(ang,mod2-2);
-    for(int i=2;i<=n;i<<=1){
-        int step=n/i;
-        #pragma omp parallel for schedule(static)
-        for(int j=0;j<n;j+=i){
-            for(int k=0;k<(i>>1);k++){
-                ll u=f[j|k];
-                ll v=f[j|k|i>>1]*root[step*k]%mod2;
-                u+=v,v=u-(v<<1);
+    for(int len=2; len<=n; len<<=1){
+        int step=n/len;
+        for(int j=0;j<n;j+=len){
+            for(int k=0;k<(len>>1);k++){
+                ll u=f[j+k];
+                ll v=f[j+k+(len>>1)]*root[step*k]%mod2;
+                u+=v;
+                v=u-(v<<1);
                 if(u>=mod2)u-=mod2;
                 if(v<0)v+=mod2;
-                f[j|k]=u;
-                f[j|k|i>>1]=v;
+                f[j+k]=u;
+                f[j+k+(len>>1)]=v;
             }
         }
     }
@@ -148,14 +143,12 @@ static ll a[MAX],b[MAX],c1[MAX],c2[MAX];
 static __inline void conv1(ll*_a,int na,ll*_b,int nb,ll*c){
     int L=32-__builtin_clz(na+nb-2),n=1<<L;
     init_root1(n,0);
-    #pragma omp parallel for schedule(static)
     for(int i=0;i<n;i++){
         a[i]=(i<na)?_a[i]:0;
         b[i]=(i<nb)?_b[i]:0;
     }
     ntt1(a,n,0);
     ntt1(b,n,0);
-    #pragma omp parallel for schedule(static)
     for(int i=0;i<n;i++){
         c[i]=(__int128_t)a[i]*b[i]%mod1;
     }
@@ -165,14 +158,12 @@ static __inline void conv1(ll*_a,int na,ll*_b,int nb,ll*c){
 static __inline void conv2(ll*_a,int na,ll*_b,int nb,ll*c){
     int L=32-__builtin_clz(na+nb-2),n=1<<L;
     init_root2(n,0);
-    #pragma omp parallel for schedule(static)
     for(int i=0;i<n;i++){
         a[i]=(i<na)?_a[i]:0;
         b[i]=(i<nb)?_b[i]:0;
     }
     ntt2(a,n,0);
     ntt2(b,n,0);
-    #pragma omp parallel for schedule(static)
     for(int i=0;i<n;i++){
         c[i]=(__int128_t)a[i]*b[i]%mod2;
     }
@@ -183,7 +174,6 @@ static __inline void conv(ll*_a,int na,ll*_b,int nb,ll*c){
     conv1(_a,na,_b,nb,c1);
     conv2(_a,na,_b,nb,c2);
     int n=na+nb-1;
-    #pragma omp parallel for schedule(static)
     for(int i=0;i<n;i++){
         ll x=c1[i],y=c2[i];
         __int128_t z=y-x;
@@ -216,7 +206,7 @@ int main(){
         B[idx++]=r;
     }
     if((na==1&&A[0]==0)||(nb==1&&B[0]==0)){
-        syscall(1,1,"0",1);
+        syscall(1,1,(char*)"0",1);
         return 0;
     }
     int nc=na+nb-1;
