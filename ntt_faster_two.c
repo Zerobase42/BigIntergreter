@@ -1,22 +1,21 @@
 #define DEBUG
 
-#include<stdio.h>
-#include<memory.h>
 #ifndef _MEMORY_H
 #define _MEMORY_H
+#include<memory.h>  //memset,memcpy
 #endif
-#include<unistd.h>
-#include<sys/mman.h>
+#include<stdio.h>
+#include<immintrin.h>// smid
+#include<unistd.h>// read,write
 #ifdef DEBUG
 #define debug(format,args...)fprintf(stderr,format,##args)
 #else
 #define debug(format,args...)
 #endif
 #ifdef __linux__
+#include<sys/mman.h>  // mmap
 #define fread(buf,a,pos,std)read(0,buf,pos)
 #define fwrite(buf,a,pos,std)write(1,buf,pos)
-#else
-
 #endif 
 #pragma GCC optimize("O3,unroll-loops")
 #pragma GCC target("sse,sse2,sse3,ssse3,sse4,avx,avx2,fma")
@@ -32,13 +31,12 @@ constexpr
 #else
 const
 #endif
-    u32 w1=3,
-        w2=3,mod1=998244353,mod2=1004535809,inv_mod1=669690699;
+u32 w1=3,w2=3,mod1=998244353,mod2=1004535809,inv_mod1=669690699;
 static u32 root[MAX>>1],rev[MAX],lastRev;
 static u32 a[MAX],b[MAX],c1[MAX],c2[MAX];
 static char io_buf[(NUMLEN<<1)+5],tmp[20];
-static u32 A[MAX],B[MAX],na,nb;
-static u64 C[MAX];
+alignas(16) static u32 A[MAX],B[MAX],na,nb;
+alignas(32) static u64 C[MAX];
 static __inline u32 powmod1(u32 n,u32 e){
     u32 ret=1;
     while(e){
@@ -193,10 +191,11 @@ static __inline void conv(u64*c){
 }
 int main(){
     int len=fread(io_buf,1,(NUMLEN<<1)+3,stdin),mid=0,idx=0,p,r,i,j,l;
+    while (len &&!(io_buf[len-1]&16))len--;
     io_buf[len]=0;
-    while(io_buf[mid]>' ')mid++;
-    for(p=mid;io_buf[p]&&io_buf[p]<=' ';p++);
-    for(len=p;io_buf[len]>' ';len++);
+    while(io_buf[mid]&16)mid++;
+    for(p=mid;io_buf[p]&&!(io_buf[p]&16);p++);
+    for(len=p;io_buf[len]&16;len++);
     int la=mid,lb=len-p;
     na=(la+DIG-1)/DIG,nb=(lb+DIG-1)/DIG;
     for(i=la;i>0;i-=DIG){
