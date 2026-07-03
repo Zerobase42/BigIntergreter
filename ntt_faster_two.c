@@ -44,6 +44,10 @@ static u32 a[MAX],b[MAX],c1[MAX],c2[MAX];
 static char io_buf[(NUMLEN<<1)+5],tmp[20];
 static u32 A[MAX],B[MAX],na,nb;
 static u64 C[MAX];
+static __inline u32 mo1(u32 x){
+    u32 ret=((__int128)x*x1)>>k;
+    return x-ret*mod1;
+}
 static __inline u32 powmod1(u32 n,u32 e){
     u32 ret=1;
     while(e){
