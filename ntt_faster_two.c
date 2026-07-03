@@ -2,7 +2,7 @@
 
 #ifndef _MEMORY_H
 #define _MEMORY_H
-#include<memory.h>  //memset,memcpy
+#include<string.h>  //memset,memcpy
 #endif
 #include<stdio.h>
 #include<immintrin.h>// smid
@@ -21,6 +21,7 @@
 #pragma GCC target("sse,sse2,sse3,ssse3,sse4,avx,avx2,fma")
 #define u32 unsigned int
 #define u64 unsigned long long
+#define u128 __uint128_t
 #define max(a,b)((a)>(b)?(a):(b))
 #define DIG 6
 #define NUMLEN 1000000
@@ -31,12 +32,18 @@ constexpr
 #else
 const
 #endif
-u32 w1=3,w2=3,mod1=998244353,mod2=1004535809,inv_mod1=669690699;
+u32 w1=3,w2=3,mod1=998244353,mod2=1004535809,inv_mod1=669690699,k=62;
+#ifdef __cplusplus
+constexpr
+#else
+const
+#endif
+u64 x1=4619796751,x2=4590862742;// x = ceil((1<<k)/mod)(k=62)
 static u32 root[MAX>>1],rev[MAX],lastRev;
 static u32 a[MAX],b[MAX],c1[MAX],c2[MAX];
 static char io_buf[(NUMLEN<<1)+5],tmp[20];
-alignas(16) static u32 A[MAX],B[MAX],na,nb;
-alignas(32) static u64 C[MAX];
+static u32 A[MAX],B[MAX],na,nb;
+static u64 C[MAX];
 static __inline u32 powmod1(u32 n,u32 e){
     u32 ret=1;
     while(e){
@@ -122,8 +129,8 @@ static __inline void ntt2(u32*f,int n){
 static __inline void conv1(u32*c,int n){
     init_root1(n,0);
 #ifdef _MEMORY_H
-    memset(a,0,n*sizeof(u32));
-    memset(b,0,n*sizeof(u32));
+    //memset(a,0,n*sizeof(u32));
+    //memset(b,0,n*sizeof(u32));
     memcpy(a,A,na*sizeof(u32));
     memcpy(b,B,nb*sizeof(u32));
 #else
@@ -216,7 +223,7 @@ int main(){
         return 0;
     }
     int nc=na+nb-1;
-    __uint128_t carry=0;
+    u64 carry=0;
     conv(C);
     for(i=0;i<nc;++i){
         carry+=C[i];
