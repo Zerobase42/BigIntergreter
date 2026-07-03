@@ -1,25 +1,22 @@
 #define DEBUG
-#ifdef DEBUG
+
 #include<stdio.h>
-#ifndef _STDIO_H
-#define _STDIO_H
+#include<memory.h>
+#ifndef _MEMORY_H
+#define _MEMORY_H
 #endif
+#include<unistd.h>
+#include<sys/mman.h>
+#ifdef DEBUG
 #define debug(format,args...)fprintf(stderr,format,##args)
 #else
 #define debug(format,args...)
 #endif
 #ifdef __linux__
-#include<unistd.h>
 #define fread(buf,a,pos,std)read(0,buf,pos)
 #define fwrite(buf,a,pos,std)write(1,buf,pos)
 #else
-#ifndef _STDIO_H
-#include<stdio.h>
-#endif
-#include<string.h>
-#ifndef _STRING_H
-#define _STRING_H
-#endif
+
 #endif 
 #pragma GCC optimize("O3,unroll-loops")
 #pragma GCC target("sse,sse2,sse3,ssse3,sse4,avx,avx2,fma")
@@ -126,7 +123,7 @@ static __inline void ntt2(u32*f,int n){
 }
 static __inline void conv1(u32*c,int n){
     init_root1(n,0);
-#ifdef _STRING_H
+#ifdef _MEMORY_H
     memset(a,0,n*sizeof(u32));
     memset(b,0,n*sizeof(u32));
     memcpy(a,A,na*sizeof(u32));
@@ -151,7 +148,7 @@ static __inline void conv1(u32*c,int n){
 }
 static __inline void conv2(u32*c,int n){
     init_root2(n,0);
-#ifdef _STRING_H
+#ifdef _MEMORY_H
     memset(a,0,n*sizeof(u32));
     memset(b,0,n*sizeof(u32));
     memcpy(a,A,na*sizeof(u32));
@@ -195,29 +192,26 @@ static __inline void conv(u64*c){
     }
 }
 int main(){
-    int len=fread(io_buf,1,(NUMLEN<<1)+3,stdin),idx=0,i,j,l;
+    int len=fread(io_buf,1,(NUMLEN<<1)+3,stdin),mid=0,idx=0,p,r,i,j,l;
     io_buf[len]=0;
-    int p=0;
-    while(io_buf[p]&16)p++;
-    na=p;
-    while(!(io_buf[p]&16))p++;
-    int q=p;
-    while(io_buf[q]&16)q++;
-    nb=q-p;
-    for(i=na;i>0;i-=DIG){
+    while(io_buf[mid]>' ')mid++;
+    for(p=mid;io_buf[p]&&io_buf[p]<=' ';p++);
+    for(len=p;io_buf[len]>' ';len++);
+    int la=mid,lb=len-p;
+    na=(la+DIG-1)/DIG,nb=(lb+DIG-1)/DIG;
+    for(i=la;i>0;i-=DIG){
         l=max(0,i-DIG);
-        u32 r=0;
+        r=0;
         for(j=l;j<i;j++)r=r*10+(io_buf[j]-'0');
         A[idx++]=r;
     }
     idx=0;
-    for(i=p+nb;i>p;i-=DIG){
+    for(i=len;i>p;i-=DIG){
         l=max(p,i-DIG);
-        u32 r=0;
+        r=0;
         for(j=l;j<i;j++)r=r*10+(io_buf[j]-'0');
         B[idx++]=r;
     }
-    na=(na+DIG-1)/DIG,nb=(nb+DIG-1)/DIG;
     if((na==1&&A[0]==0)||(nb==1&&B[0]==0)){
         fwrite((char*)"0",1,1,stdout);
         return 0;
