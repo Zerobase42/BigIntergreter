@@ -1,20 +1,20 @@
 #define DEBUG
-
 #ifndef _MEMORY_H
 #define _MEMORY_H
-#include<string.h>  //memset,memcpy
+#include<string.h>
 #endif
 #include<stdio.h>
-#include<immintrin.h>// smid
-#include<unistd.h>// read,write
+#include<immintrin.h>
+#include<unistd.h>
 #ifdef DEBUG
 #define debug(format,args...)fprintf(stderr,format,##args)
 #else
 #define debug(format,args...)
 #endif
 #ifdef __linux__
-#include<sys/mman.h>  // mmap
-#define fread(buf,a,pos,std)read(0,buf,pos)
+#include<sys/mman.h>
+#include<sys/stat.h>
+#define fwrite(buf,a,pos,std)write(1,buf,pos)
 #define fwrite(buf,a,pos,std)write(1,buf,pos)
 #endif 
 #pragma GCC optimize("O3,unroll-loops")
@@ -38,15 +38,19 @@ constexpr
 #else
 const
 #endif
-u64 x1=4619796751,x2=4590862742;// x = ceil((1<<k)/mod)(k=62)
+u64 x1=4619796751,x2=4590862742;
 static u32 root[MAX>>1],rev[MAX],lastRev;
 static u32 a[MAX],b[MAX],c1[MAX],c2[MAX];
 static char io_buf[(NUMLEN<<1)+5],tmp[20];
 static u32 A[MAX],B[MAX],na,nb;
 static u64 C[MAX];
-static __inline u32 mo1(u32 x){
-    u32 ret=((__int128)x*x1)>>k;
+static __inline u32 modular1(u32 x){
+    u32 ret=((u128)x*x1)>>k;
     return x-ret*mod1;
+}
+static __inline u32 modular2(u32 x){
+    u32 ret=((u128)x*x2)>>k;
+    return x-ret*mod2;
 }
 static __inline u32 powmod1(u32 n,u32 e){
     u32 ret=1;
@@ -133,8 +137,6 @@ static __inline void ntt2(u32*f,int n){
 static __inline void conv1(u32*c,int n){
     init_root1(n,0);
 #ifdef _MEMORY_H
-    //memset(a,0,n*sizeof(u32));
-    //memset(b,0,n*sizeof(u32));
     memcpy(a,A,na*sizeof(u32));
     memcpy(b,B,nb*sizeof(u32));
 #else
@@ -158,10 +160,10 @@ static __inline void conv1(u32*c,int n){
 static __inline void conv2(u32*c,int n){
     init_root2(n,0);
 #ifdef _MEMORY_H
-    memset(a,0,n*sizeof(u32));
-    memset(b,0,n*sizeof(u32));
     memcpy(a,A,na*sizeof(u32));
+    memset(a+na,0,(n-na)*sizeof(u32));
     memcpy(b,B,nb*sizeof(u32));
+    memset(b+nb,0,(n-nb)*sizeof(u32));
 #else
     for(int i=0;i<n;i++){
         a[i]=(i<na)?A[i]:0;
@@ -201,25 +203,32 @@ static __inline void conv(u64*c){
     }
 }
 int main(){
-    int len=fread(io_buf,1,(NUMLEN<<1)+3,stdin),mid=0,idx=0,p,r,i,j,l;
-    while (len &&!(io_buf[len-1]&16))len--;
+    int mid=0,idx=0,p,r,i,j,l,len;
+#ifdef __linux__
+    struct stat st;
+    fstat(0,&st);
+    len=(int)st.st_size;
+    char*buf=(char*)mmap(NULL,len,PROT_READ,MAP_SHARED,0,0);
+#else
+    len=fread(io_buf,1,(NUMLEN<<1)+3,stdin);
     io_buf[len]=0;
-    while(io_buf[mid]&16)mid++;
-    for(p=mid;io_buf[p]&&!(io_buf[p]&16);p++);
-    for(len=p;io_buf[len]&16;len++);
+    char*buf=io_buf;
+#endif
+    while(len&&!(buf[len-1]&16))len--;
+    while(buf[mid]&16)mid++;
+    for(p=mid;buf[p]&&!(buf[p]&16);p++);
+    for(len=p;buf[len]&16;len++);
     int la=mid,lb=len-p;
     na=(la+DIG-1)/DIG,nb=(lb+DIG-1)/DIG;
     for(i=la;i>0;i-=DIG){
-        l=max(0,i-DIG);
-        r=0;
-        for(j=l;j<i;j++)r=r*10+(io_buf[j]-'0');
+        l=max(0,i-DIG);r=0;
+        for(j=l;j<i;j++)r=r*10+(buf[j]-'0');
         A[idx++]=r;
     }
     idx=0;
     for(i=len;i>p;i-=DIG){
-        l=max(p,i-DIG);
-        r=0;
-        for(j=l;j<i;j++)r=r*10+(io_buf[j]-'0');
+        l=max(p,i-DIG);r=0;
+        for(j=l;j<i;j++)r=r*10+(buf[j]-'0');
         B[idx++]=r;
     }
     if((na==1&&A[0]==0)||(nb==1&&B[0]==0)){
@@ -250,4 +259,7 @@ int main(){
             io_buf[idx++]=tmp[j];
     }
     fwrite(io_buf,1,idx,stdout);
+#ifdef __linux__
+    munmap(buf,st.st_size);
+#endif
 }
