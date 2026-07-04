@@ -17,6 +17,7 @@
 #define fwrite(buf,a,pos,std)write(1,buf,pos)
 #define fwrite(buf,a,pos,std)write(1,buf,pos)
 #endif 
+#include<omp.h>
 #pragma GCC optimize("O3,unroll-loops")
 #pragma GCC target("sse,sse2,sse3,ssse3,sse4,avx,avx2,fma")
 #define u32 unsigned int
@@ -44,8 +45,8 @@ constexpr
 #else
 const
 #endif
-u32 invPowL1[31]={1,499122177,748683265,873463809,935854081,967049217,982646785,990445569,994344961,996294657,997269505,997756929,998000641,998122497,998183425,998213889,998229121,998236737,998240545,998242449,998243401},
-    invPowL2[31]={1,502267905,753401857,878968833,941752321,973144065,988839937,996687873,1000611841,1002573825,1003554817,1004045313,1004290561,1004413185,1004474497,1004505153,1004520481,1004528145,1004531977,1004533893,1004534851};
+u32 invPowL1[20]={1,499122177,748683265,873463809,935854081,967049217,982646785,990445569,994344961,996294657,997269505,997756929,998000641,998122497,998183425,998213889,998229121,998236737,998240545,998242449,998243401},
+    invPowL2[20]={1,502267905,753401857,878968833,941752321,973144065,988839937,996687873,1000611841,1002573825,1003554817,1004045313,1004290561,1004413185,1004474497,1004505153,1004520481,1004528145,1004531977,1004533893,1004534851};
 static u32 root[MAX>>1],rev[MAX],lastRev;
 static u32 a[MAX],b[MAX],c1[MAX],c2[MAX];
 static char io_buf[(NUMLEN<<1)+5],tmp[20];
@@ -94,6 +95,7 @@ static __inline void init_root2(int n,unsigned char inv){
     }
 }
 static __inline void ntt1(u32*f,int n){
+    #pragma omp parallel for
     for(int i=1;i<n-1;i++){
         if(rev[i]<i){
             u32 tmp=f[i];
@@ -118,6 +120,7 @@ static __inline void ntt1(u32*f,int n){
     }
 }
 static __inline void ntt2(u32*f,int n){
+    #pragma omp parallel for
     for(int i=1;i<n-1;i++){
         if(rev[i]<i){
             u32 tmp=f[i];
@@ -145,7 +148,9 @@ static __inline void conv1(u32*c,int n){
     init_root1(n,0);
 #ifdef _MEMORY_H
     memcpy(a,A,na*sizeof(u32));
+    memset(a+na,0,(n-na)*sizeof(u32));
     memcpy(b,B,nb*sizeof(u32));
+    memset(b+nb,0,(n-nb)*sizeof(u32));
 #else
     for(int i=0;i<n;i++){
         a[i]=(i<na)?A[i]:0;
@@ -154,12 +159,14 @@ static __inline void conv1(u32*c,int n){
 #endif
     ntt1(a,n);
     ntt1(b,n);
+    #pragma omp parallel for
     for(int i=0;i<n;i++){
         c[i]=(u64)a[i]*b[i]%mod1;
     }
     init_root1(n,1);
     ntt1(c,n);
     u32 t=invPowL1[__builtin_ctz(n)];
+    #pragma omp parallel for
     for(int i=0;i<n;i++){
         c[i]=(u64)c[i]*t%mod1;
     }
@@ -179,12 +186,14 @@ static __inline void conv2(u32*c,int n){
 #endif
     ntt2(a,n);
     ntt2(b,n);
+    #pragma omp parallel for
     for(int i=0;i<n;i++){
         c[i]=(u64)a[i]*b[i]%mod2;
     }
     init_root2(n,1);
     ntt2(c,n);
     u32 t=invPowL2[__builtin_ctz(n)];
+    #pragma omp parallel for
     for(int i=0;i<n;i++){
         c[i]=(u64)c[i]*t%mod2;
     }
@@ -201,6 +210,7 @@ static __inline void conv(u64*c){
     }
     conv1(c1,N);
     conv2(c2,N);
+    #pragma omp parallel for
     for(int i=0;i<n;i++){
         u32 x=c1[i],y=c2[i];
         u32 z=y+mod2-x;
