@@ -1,6 +1,7 @@
 #define DEBUG 0
 #define BARRET 1
-#define SMID 1
+#define SIMD 1
+#define NTT_SIMD 0
 //설정
 #ifndef _MEMORY_H
 #define _MEMORY_H
@@ -46,7 +47,7 @@ static const u32 mu2_lo=(u32)mu2, mu2_hi=(u32)(mu2>>32);
 static u32 root[MAX>>1],rev[MAX],lastRev,a[MAX],b[MAX],c1[MAX],c2[MAX],A[MAX],B[MAX],na,nb;
 static u32 C[MAX];
 static char io_buf[(NUMLEN<<1)+5],tmp[20];
-#ifdef SMID
+#ifdef SIMD
 static __inline void parse_blocks_simd(char*buf,int hi,int lo,u32*out,int*idx){
     const __m256i ten=_mm256_set1_epi32(10);
     const __m256i mask255=_mm256_set1_epi32(0xFF);
@@ -196,7 +197,7 @@ static __inline void ntt1(u32*f,int n){
         int half=len>>1;
         for(int j=0;j<n;j+=len){
             int k=0;
-#if SMID==1
+#if SIMD==1&&NTT_SIMD==1
             const __m128i stepvec=_mm_set1_epi32(step);
             const __m128i idxbase=_mm_setr_epi32(0,1,2,3);
             const __m128i modvec=_mm_set1_epi32(mod1);
@@ -220,7 +221,7 @@ static __inline void ntt1(u32*f,int n){
                 _mm_storeu_si128((__m128i*)&f[j+k],sum);
                 _mm_storeu_si128((__m128i*)&f[j+k+half],diff);
             }
-#endif
+#else
             for(;k<half;k++){
                 u32 u=f[j+k],v=(u64)f[j+k+half]*root[step*k]%mod1;
                 u+=v;
@@ -230,6 +231,7 @@ static __inline void ntt1(u32*f,int n){
                 f[j+k]=u;
                 f[j+k+half]=v;
             }
+#endif
         }
         step>>=1;
     }
@@ -248,7 +250,7 @@ static __inline void ntt2(u32*f,int n){
         int half=len>>1;
         for(int j=0;j<n;j+=len){
             int k=0;
-#if SMID==1
+#if SIMD==1&&NTT_SIMD==1
             const __m128i stepvec=_mm_set1_epi32(step);
             const __m128i idxbase=_mm_setr_epi32(0,1,2,3);
             const __m128i modvec=_mm_set1_epi32(mod2);
@@ -272,7 +274,7 @@ static __inline void ntt2(u32*f,int n){
                 _mm_storeu_si128((__m128i*)&f[j+k],sum);
                 _mm_storeu_si128((__m128i*)&f[j+k+half],diff);
             }
-#endif
+#else
             for(;k<half;k++){
                 u32 u=f[j+k],v=(u64)f[j+k+half]*root[step*k]%mod2;
                 u+=v;
@@ -282,6 +284,7 @@ static __inline void ntt2(u32*f,int n){
                 f[j+k]=u;
                 f[j+k+half]=v;
             }
+#endif
         }
         step>>=1;
     }
@@ -302,7 +305,7 @@ static __inline void conv1(u32*c,int n){
 #endif
     ntt1(a,n);
     ntt1(b,n);
-#if SMID==1
+#if SIMD==1
     int i=0;
     for(;i+4<=n;i+=4){
         __m128i av=_mm_loadu_si128((__m128i*)&a[i]);
@@ -341,7 +344,7 @@ static __inline void conv2(u32*c,int n){
 #endif
     ntt2(a,n);
     ntt2(b,n);
-#if SMID==1
+#if SIMD==1
     int i=0;
     for(;i+4<=n;i+=4){
         __m128i av=_mm_loadu_si128((__m128i*)&a[i]);
@@ -382,7 +385,7 @@ int main(){
     for(len=p;buf[len]&16;len++);
     int la=mid,lb=len-p;
     na=(la+DIG-1)/DIG,nb=(lb+DIG-1)/DIG;
-#ifdef SMID==1
+#ifdef SIMD==1
     idx=0;
     parse_blocks_simd(buf,la,0,A,&idx);
     idx=0;
@@ -430,7 +433,7 @@ int main(){
             C[nc++]=carry%BASE,carry/=BASE;
     }
     while(nc>1&&C[nc-1]==0)nc--;
-#if SMID==1
+#if SIMD==1
     idx=0;
     i=nc-1;
     for(; i-7>=0;i-=8){
