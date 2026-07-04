@@ -34,24 +34,24 @@ constexpr
 #else
 const
 #endif
-u32 w1=3,w2=3,mod1=998244353,mod2=1004535809,inv_mod1=669690699,k=62;
+u32 w1=3,w2=3,mod1=998244353,mod2=1004535809,inv_mod1=669690699,k=93;
 #if BARRET==1
 #ifdef __cplusplus
 constexpr
 #else
 const
 #endif
-u64 x1=4619796751,x2=4590862742;
+u64 x1=((u128(1)<<k)+mod1-1)/mod1,x2=((u128(1)<<k)+mod2-1)/mod2;
 #endif
 static u32 root[MAX>>1],rev[MAX],lastRev,a[MAX],b[MAX],c1[MAX],c2[MAX],A[MAX],B[MAX],na,nb;
 static u64 C[MAX];
 static char io_buf[(NUMLEN<<1)+5],tmp[20];
 #if BARRET==1
-static __inline u32 modular1(u32 x){
+static __inline u32 modular1(u128 x){
     u32 ret=((u128)x*x1)>>k;
     return x-ret*mod1;
 }
-static __inline u32 modular2(u32 x){
+static __inline u32 modular2(u128 x){
     u32 ret=((u128)x*x2)>>k;
     return x-ret*mod2;
 }
@@ -258,7 +258,8 @@ int main(){
         C[i]=carry%BASE;
         carry/=BASE;
     }
-    while(carry)C[nc++]=carry%BASE,carry/=BASE;
+    while(carry)
+        C[nc++]=carry%BASE,carry/=BASE;
     while(nc>1&&C[nc-1]==0)nc--;
     idx=0;
     for(i=nc-1;i>=0;--i){
