@@ -1,4 +1,5 @@
-#define DEBUG
+#define DEBUG 0
+#define BARRET 0
 #ifndef _MEMORY_H
 #define _MEMORY_H
 #include<string.h>
@@ -6,12 +7,12 @@
 #include<stdio.h>
 #include<immintrin.h>
 #include<unistd.h>
-#ifdef DEBUG
+#if DEBUG==1
 #define debug(format,args...)fprintf(stderr,format,##args)
 #else
 #define debug(format,args...)
 #endif
-#ifdef __linux__
+#ifdef __linux__    
 #include<sys/mman.h>
 #include<sys/stat.h>
 #define fwrite(buf,a,pos,std)write(1,buf,pos)
@@ -26,32 +27,26 @@
 #define max(a,b)((a)>(b)?(a):(b))
 #define DIG 6
 #define NUMLEN 1000000
-#define BASE 1000000 
-#define MAX 1048576  
+#define BASE 1000000
+#define MAX 1048576
 #ifdef __cplusplus
 constexpr
 #else
 const
 #endif
 u32 w1=3,w2=3,mod1=998244353,mod2=1004535809,inv_mod1=669690699,k=62;
+#if BARRET==1
 #ifdef __cplusplus
 constexpr
 #else
 const
 #endif
 u64 x1=4619796751,x2=4590862742;
-#ifdef __cplusplus
-constexpr 
-#else
-const
 #endif
-u32 invPowL1[20]={1,499122177,748683265,873463809,935854081,967049217,982646785,990445569,994344961,996294657,997269505,997756929,998000641,998122497,998183425,998213889,998229121,998236737,998240545,998242449,998243401},
-    invPowL2[20]={1,502267905,753401857,878968833,941752321,973144065,988839937,996687873,1000611841,1002573825,1003554817,1004045313,1004290561,1004413185,1004474497,1004505153,1004520481,1004528145,1004531977,1004533893,1004534851};
-static u32 root[MAX>>1],rev[MAX],lastRev;
-static u32 a[MAX],b[MAX],c1[MAX],c2[MAX];
-static char io_buf[(NUMLEN<<1)+5],tmp[20];
-static u32 A[MAX],B[MAX],na,nb;
+static u32 root[MAX>>1],rev[MAX],lastRev,a[MAX],b[MAX],c1[MAX],c2[MAX],A[MAX],B[MAX],na,nb;
 static u64 C[MAX];
+static char io_buf[(NUMLEN<<1)+5],tmp[20];
+#if BARRET==1
 static __inline u32 modular1(u32 x){
     u32 ret=((u128)x*x1)>>k;
     return x-ret*mod1;
@@ -60,6 +55,7 @@ static __inline u32 modular2(u32 x){
     u32 ret=((u128)x*x2)>>k;
     return x-ret*mod2;
 }
+#endif
 static __inline u32 powmod1(u32 n,u32 e){
     u32 ret=1;
     while(e){
@@ -152,6 +148,7 @@ static __inline void conv1(u32*c,int n){
     memcpy(b,B,nb*sizeof(u32));
     memset(b+nb,0,(n-nb)*sizeof(u32));
 #else
+    #pragma omp parallel for
     for(int i=0;i<n;i++){
         a[i]=(i<na)?A[i]:0;
         b[i]=(i<nb)?B[i]:0;
@@ -165,7 +162,7 @@ static __inline void conv1(u32*c,int n){
     }
     init_root1(n,1);
     ntt1(c,n);
-    u32 t=invPowL1[__builtin_ctz(n)];
+    u32 t=powmod1(n,mod1-2);
     #pragma omp parallel for
     for(int i=0;i<n;i++){
         c[i]=(u64)c[i]*t%mod1;
@@ -179,6 +176,7 @@ static __inline void conv2(u32*c,int n){
     memcpy(b,B,nb*sizeof(u32));
     memset(b+nb,0,(n-nb)*sizeof(u32));
 #else
+    #pragma omp parallel for
     for(int i=0;i<n;i++){
         a[i]=(i<na)?A[i]:0;
         b[i]=(i<nb)?B[i]:0;
@@ -192,7 +190,7 @@ static __inline void conv2(u32*c,int n){
     }
     init_root2(n,1);
     ntt2(c,n);
-    u32 t=invPowL2[__builtin_ctz(n)];
+    u32 t=powmod2(n,mod2-2);
     #pragma omp parallel for
     for(int i=0;i<n;i++){
         c[i]=(u64)c[i]*t%mod2;
@@ -262,20 +260,18 @@ int main(){
     }
     while(carry)C[nc++]=carry%BASE,carry/=BASE;
     while(nc>1&&C[nc-1]==0)nc--;
-    int t=0;
     idx=0;
-    u32 x=C[nc-1];
-    while(x)tmp[t++]=(x%10)|48,x/=10;
-    if(t==0)tmp[t++]='0';
-    while(t--)io_buf[idx++]=tmp[t];
-    for(i=nc-2;i>=0;--i){
-        x=C[i];
-        for(j=0;j<DIG;j++)
-            tmp[j]=(x%10)|48,x/=10;
-        for(j=DIG-1;j>=0;j--)
-            io_buf[idx++]=tmp[j];
+    for(i=nc-1;i>=0;--i){
+        u32 x=C[i];
+        for(j=DIG-1;j>=0;j--){
+            io_buf[idx+j]=(x%10)|48;
+            x/=10;
+        }
+        idx+=DIG;
     }
-    fwrite(io_buf,1,idx,stdout);
+    int start=0;
+    while(io_buf[start]=='0' && start<idx-1) start++;
+    fwrite(io_buf+start,1,idx-start,stdout);
 #ifdef __linux__
     munmap(buf,st.st_size);
 #endif
