@@ -39,6 +39,13 @@ constexpr
 const
 #endif
 u64 x1=4619796751,x2=4590862742;
+#ifdef __cplusplus
+constexpr 
+#else
+const
+#endif
+u32 invPowL1[31]={1,499122177,748683265,873463809,935854081,967049217,982646785,990445569,994344961,996294657,997269505,997756929,998000641,998122497,998183425,998213889,998229121,998236737,998240545,998242449,998243401},
+    invPowL2[31]={1,502267905,753401857,878968833,941752321,973144065,988839937,996687873,1000611841,1002573825,1003554817,1004045313,1004290561,1004413185,1004474497,1004505153,1004520481,1004528145,1004531977,1004533893,1004534851};
 static u32 root[MAX>>1],rev[MAX],lastRev;
 static u32 a[MAX],b[MAX],c1[MAX],c2[MAX];
 static char io_buf[(NUMLEN<<1)+5],tmp[20];
@@ -152,7 +159,7 @@ static __inline void conv1(u32*c,int n){
     }
     init_root1(n,1);
     ntt1(c,n);
-    u32 t=powmod1(n,mod1-2);
+    u32 t=invPowL1[__builtin_ctz(n)];
     for(int i=0;i<n;i++){
         c[i]=(u64)c[i]*t%mod1;
     }
@@ -177,7 +184,7 @@ static __inline void conv2(u32*c,int n){
     }
     init_root2(n,1);
     ntt2(c,n);
-    u32 t=powmod2(n,mod2-2);
+    u32 t=invPowL2[__builtin_ctz(n)];
     for(int i=0;i<n;i++){
         c[i]=(u64)c[i]*t%mod2;
     }
