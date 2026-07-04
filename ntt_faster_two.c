@@ -45,7 +45,7 @@ const
 #endif
 u64 x1=((u128(1)<<k)+mod1-1)/mod1,x2=((u128(1)<<k)+mod2-1)/mod2;
 #endif
-static u32 root[MAX>>1],rev[MAX],lastRev,a[MAX],b[MAX],c1[MAX],c2[MAX],A[MAX],B[MAX],na,nb;
+static u32 root[MAX>>1],rev[MAX],lastRev,a[MAX],b[MAX],c1[MAX],c2[MAX],A[MAX],B[MAX],na,nb,nc;
 static u64 C[MAX];
 static char io_buf[(NUMLEN<<1)+5],tmp[20];
 #if BARRET==1
@@ -65,6 +65,16 @@ static __inline __m256i div10_epu64(__m256i x, __m256i *rem){
     __m256i q=_mm256_srli_epi64(_mm256_mul_epu32(x,magic),35); // x < 2^32 이므로 그대로 적용
     __m256i q10=_mm256_mul_epu32(q,ten);                       // q*10 < 10^6, exact
     *rem=_mm256_sub_epi64(x,q10);
+    return q;
+}
+static __inline __m256i div10_mod10(__m256i x, __m256i *rem){
+    const __m256i magic=_mm256_set1_epi32((int)0xCCCCCCCD);
+    const __m256i ten=_mm256_set1_epi32(10);
+    __m256i odd=_mm256_srli_epi64(x,32);                     // 홀수 레인을 각 64비트 하위로 이동
+    __m256i pe=_mm256_srli_epi64(_mm256_mul_epu32(x,magic),35);   // 짝수 레인(0,2,4,6) 몫
+    __m256i po=_mm256_srli_epi64(_mm256_mul_epu32(odd,magic),35); // 홀수 레인(1,3,5,7) 몫
+    __m256i q=_mm256_or_si256(pe,_mm256_slli_epi64(po,32));  // 다시 원래 레인 위치로 병합
+    *rem=_mm256_sub_epi32(x,_mm256_mullo_epi32(q,ten));      // x - q*10
     return q;
 }
 #endif
@@ -208,7 +218,7 @@ static __inline void conv2(u32*c,int n){
         c[i]=(u64)c[i]*t%mod2;
     }
 }
-static __inline void conv(u64*c){
+static __inline void convNcarry(u64*c){
     int n=na+nb-1,clz=__builtin_clz(n-1);
     int e=32-clz,N=1<<e;
     if(lastRev!=N){
@@ -220,14 +230,21 @@ static __inline void conv(u64*c){
     }
     conv1(c1,N);
     conv2(c2,N);
+    nc=na+nb-1;
+    u64 carry=0;
     #pragma omp parallel for
     for(int i=0;i<n;i++){
         u32 x=c1[i],y=c2[i];
         u32 z=y+mod2-x;
         if(z>=mod2)z-=mod2;
         u32 k=(u64)z*inv_mod1%mod2;
-        c[i]=(u64)x+(u64)mod1*k;
+        carry+=(u64)x+(u64)mod1*k;
+        c[nc++]=carry%BASE;
+        carry/=BASE;
     }
+    while(carry)
+        c[nc++]=carry%BASE,carry/=BASE;
+    while(nc>1&&c[nc-1]==0)nc--;
 }
 int main(){
     int mid=0,idx=0,p,r,i,j,l,len;
@@ -262,17 +279,7 @@ int main(){
         fwrite((char*)"0",1,1,stdout);
         return 0;
     }
-    int nc=na+nb-1;
-    u64 carry=0;
-    conv(C);
-    for(i=0;i<nc;++i){
-        carry+=C[i];
-        C[i]=carry%BASE;
-        carry/=BASE;
-    }
-    while(carry)
-        C[nc++]=carry%BASE,carry/=BASE;
-    while(nc>1&&C[nc-1]==0)nc--;
+    convNcarry(C);
 #if SMID==1
     idx=0;
     i=nc-1;
