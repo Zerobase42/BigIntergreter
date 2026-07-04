@@ -1,5 +1,5 @@
 #define DEBUG 0
-#define BARRET 0
+#define BARRET 0 // useless
 #define SMID 1
 //설정
 #ifndef _MEMORY_H
@@ -59,6 +59,34 @@ static __inline u32 modular2(u128 x){
 }
 #endif
 #ifdef SMID
+static __inline void parse_blocks_simd(char*buf,int hi,int lo,u32*out,int*idx){
+    const __m256i ten=_mm256_set1_epi32(10);
+    const __m256i mask255=_mm256_set1_epi32(0xFF);
+    const __m256i zero48=_mm256_set1_epi32('0');
+    int i=hi;
+    while(i-8*DIG>=lo){
+        __m256i acc=_mm256_setzero_si256();
+        for(int d=0;d<DIG;d++){
+            // block b(0..7)의 d번째 자리 바이트 offset = i-(b+1)*DIG+d
+            __m256i vidx=_mm256_setr_epi32(
+                i-1*DIG+d,i-2*DIG+d,i-3*DIG+d,i-4*DIG+d,
+                i-5*DIG+d,i-6*DIG+d,i-7*DIG+d,i-8*DIG+d);
+            __m256i raw=_mm256_i32gather_epi32((const int*)buf,vidx,1);
+            __m256i dig=_mm256_sub_epi32(_mm256_and_si256(raw,mask255),zero48);
+            acc=_mm256_add_epi32(_mm256_mullo_epi32(acc,ten),dig);
+        }
+        u32 r[8];
+        _mm256_storeu_si256((__m256i*)r,acc);
+        for(int b=0;b<8;b++) out[(*idx)++]=r[b];
+        i-=8*DIG;
+    }
+    for(;i>lo;i-=DIG){                    // 8블록 미만 나머지는 스칼라
+        int l=max(lo,i-DIG);
+        u32 r=0;
+        for(int j=l;j<i;j++)r=r*10+(buf[j]-'0');
+        out[(*idx)++]=r;
+    }
+}
 static __inline __m256i div10_epu32(__m256i x,__m256i*rem){
     const __m256i magic=_mm256_set1_epi32((int)0xCCCCCCCD);
     const __m256i ten=_mm256_set1_epi32(10);
@@ -228,17 +256,10 @@ int main(){
     for(len=p;buf[len]&16;len++);
     int la=mid,lb=len-p;
     na=(la+DIG-1)/DIG,nb=(lb+DIG-1)/DIG;
-    for(i=la;i>0;i-=DIG){
-        l=max(0,i-DIG);r=0;
-        for(j=l;j<i;j++)r=r*10+(buf[j]-'0');
-        A[idx++]=r;
-    }
     idx=0;
-    for(i=len;i>p;i-=DIG){
-        l=max(p,i-DIG);r=0;
-        for(j=l;j<i;j++)r=r*10+(buf[j]-'0');
-        B[idx++]=r;
-    }
+    parse_blocks_simd(buf,la,0,A,&idx);
+    idx=0;
+    parse_blocks_simd(buf,len,p,B,&idx);
     if((na==1&&A[0]==0)||(nb==1&&B[0]==0)){
         fwrite((char*)"0",1,1,stdout);
         return 0;
@@ -256,7 +277,6 @@ int main(){
         }
         conv1(c1,N);
         conv2(c2,N);
-        #pragma omp parallel for
         for(int i=0;i<nc;i++){
             u32 x=c1[i],y=c2[i];
             u32 z=y+mod2-x;
@@ -276,13 +296,16 @@ int main(){
     for(; i-7>=0;i-=8){
         __m256i x=_mm256_loadu_si256((__m256i*)&C[i-7]); // 레인0..7 = C[i-7..i] (오름차순)
         u32 digits[8][DIG];
+        //unroll-loops
         for(j=DIG-1;j>=0;j--){
             __m256i rem;
             x=div10_epu32(x,&rem);
             u32 r[8];
             _mm256_storeu_si256((__m256i*)r,rem);
+            //unroll-loops
             for(int b=0;b<8;b++) digits[b][j]=r[b]|48;
         }
+        //unroll-loops
         for(int b=7;b>=0;b--)          // C[i]가 가장 상위이므로 b=7부터 역순으로 출력
             for(j=0;j<DIG;j++)
                 io_buf[idx++]=digits[b][j];
