@@ -46,7 +46,7 @@ const
 u64 x1=((u128(1)<<k)+mod1-1)/mod1,x2=((u128(1)<<k)+mod2-1)/mod2;
 #endif
 static u32 root[MAX>>1],rev[MAX],lastRev,a[MAX],b[MAX],c1[MAX],c2[MAX],A[MAX],B[MAX],na,nb;
-static u64 C[MAX];
+static u32 C[MAX];
 static char io_buf[(NUMLEN<<1)+5],tmp[20];
 #if BARRET==1
 static __inline u32 modular1(u128 x){
@@ -59,12 +59,14 @@ static __inline u32 modular2(u128 x){
 }
 #endif
 #ifdef SMID
-static __inline __m256i div10_epu64(__m256i x,__m256i*rem){
-    const __m256i magic=_mm256_set1_epi64x(0xCCCCCCCDULL);
-    const __m256i ten=_mm256_set1_epi64x(10);
-    __m256i q=_mm256_srli_epi64(_mm256_mul_epu32(x,magic),35);//x<2^32 이므로 그대로 적용
-    __m256i q10=_mm256_mul_epu32(q,ten);                      //q*10<10^6,exact
-    *rem=_mm256_sub_epi64(x,q10);
+static __inline __m256i div10_epu32(__m256i x,__m256i*rem){
+    const __m256i magic=_mm256_set1_epi32((int)0xCCCCCCCD);
+    const __m256i ten=_mm256_set1_epi32(10);
+    __m256i odd=_mm256_srli_epi64(x,32);                     // 홀수 레인을 각 64비트 하위로 이동
+    __m256i pe=_mm256_srli_epi64(_mm256_mul_epu32(x,magic),35);   // 짝수 레인(0,2,4,6) 몫
+    __m256i po=_mm256_srli_epi64(_mm256_mul_epu32(odd,magic),35); // 홀수 레인(1,3,5,7) 몫
+    __m256i q=_mm256_or_si256(pe,_mm256_slli_epi64(po,32));  // 다시 원래 레인 위치로 병합
+    *rem=_mm256_sub_epi32(x,_mm256_mullo_epi32(q,ten));      // x - q*10
     return q;
 }
 #endif
@@ -247,9 +249,8 @@ int main(){
         int clz=__builtin_clz(nc-1);
         int e=32-clz,N=1<<e;
         if(lastRev!=N){
-            int L=e;
             for(int i=1;i<N;i++){
-                rev[i]=(rev[i>>1]|(i&1)<<L)>>1;
+                rev[i]=(rev[i>>1]|(i&1)<<e)>>1;
             }
             lastRev=N;
         }
@@ -272,21 +273,21 @@ int main(){
 #if SMID==1
     idx=0;
     i=nc-1;
-    for(;i-3>=0;i-=4){
-        __m256i x=_mm256_loadu_si256((__m256i*)&C[i-3]);//레인0=C[i-3](하위)...레인3=C[i](상위)
-        u64 digits[4][DIG];
+    for(; i-7>=0;i-=8){
+        __m256i x=_mm256_loadu_si256((__m256i*)&C[i-7]); // 레인0..7 = C[i-7..i] (오름차순)
+        u32 digits[8][DIG];
         for(j=DIG-1;j>=0;j--){
             __m256i rem;
-            x=div10_epu64(x,&rem);
-            u64 r[4];
+            x=div10_epu32(x,&rem);
+            u32 r[8];
             _mm256_storeu_si256((__m256i*)r,rem);
-            for(int b=0;b<4;b++)digits[b][j]=r[b]|48;
+            for(int b=0;b<8;b++) digits[b][j]=r[b]|48;
         }
-        for(int b=3;b>=0;b--)             //C[i]가 최상위이므로 b=3부터 역순 출력
+        for(int b=7;b>=0;b--)          // C[i]가 가장 상위이므로 b=7부터 역순으로 출력
             for(j=0;j<DIG;j++)
-                io_buf[idx++]=(char)digits[b][j];
+                io_buf[idx++]=digits[b][j];
     }
-    for(;i>=0;--i){                     //4개 미만 남은 나머지는 스칼라
+    for(; i>=0; --i){                  // 8개 미만 남은 나머지는 기존 스칼라 방식
         u32 x=C[i];
         for(j=DIG-1;j>=0;j--){
             io_buf[idx+j]=(x%10)|48;
@@ -295,7 +296,7 @@ int main(){
         idx+=DIG;
     }
     int start=0;
-    while(io_buf[start]=='0'&&start<idx-1)start++;
+    while(io_buf[start]=='0' && start<idx-1) start++;
     fwrite(io_buf+start,1,idx-start,stdout);
 #else
     idx=0;
