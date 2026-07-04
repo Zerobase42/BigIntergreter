@@ -59,11 +59,11 @@ static __inline u32 modular2(u128 x){
 }
 #endif
 #ifdef SMID
-static __inline __m256i div10_epu64(__m256i x, __m256i *rem){
+static __inline __m256i div10_epu64(__m256i x,__m256i*rem){
     const __m256i magic=_mm256_set1_epi64x(0xCCCCCCCDULL);
     const __m256i ten=_mm256_set1_epi64x(10);
-    __m256i q=_mm256_srli_epi64(_mm256_mul_epu32(x,magic),35); // x < 2^32 이므로 그대로 적용
-    __m256i q10=_mm256_mul_epu32(q,ten);                       // q*10 < 10^6, exact
+    __m256i q=_mm256_srli_epi64(_mm256_mul_epu32(x,magic),35);//x<2^32 이므로 그대로 적용
+    __m256i q10=_mm256_mul_epu32(q,ten);                      //q*10<10^6,exact
     *rem=_mm256_sub_epi64(x,q10);
     return q;
 }
@@ -244,7 +244,7 @@ int main(){
     int nc=na+nb-1;
     u64 carry=0;
     {
-        int n=na+nb-1,clz=__builtin_clz(n-1);
+        int clz=__builtin_clz(nc-1);
         int e=32-clz,N=1<<e;
         if(lastRev!=N){
             int L=e;
@@ -256,40 +256,37 @@ int main(){
         conv1(c1,N);
         conv2(c2,N);
         #pragma omp parallel for
-        for(int i=0;i<n;i++){
+        for(int i=0;i<nc;i++){
             u32 x=c1[i],y=c2[i];
             u32 z=y+mod2-x;
             if(z>=mod2)z-=mod2;
             u32 k=(u64)z*inv_mod1%mod2;
-            C[i]=(u64)x+(u64)mod1*k;
+            carry+=(u64)x+(u64)mod1*k;
+            C[i]=carry%BASE;
+            carry/=BASE;
         }
+        while(carry)
+            C[nc++]=carry%BASE,carry/=BASE;
     }
-    for(i=0;i<nc;++i){
-        carry+=C[i];
-        C[i]=carry%BASE;
-        carry/=BASE;
-    }
-    while(carry)
-        C[nc++]=carry%BASE,carry/=BASE;
     while(nc>1&&C[nc-1]==0)nc--;
 #if SMID==1
     idx=0;
     i=nc-1;
-    for(; i-3>=0; i-=4){
-        __m256i x=_mm256_loadu_si256((__m256i*)&C[i-3]); // 레인0=C[i-3](하위)...레인3=C[i](상위)
+    for(;i-3>=0;i-=4){
+        __m256i x=_mm256_loadu_si256((__m256i*)&C[i-3]);//레인0=C[i-3](하위)...레인3=C[i](상위)
         u64 digits[4][DIG];
         for(j=DIG-1;j>=0;j--){
             __m256i rem;
             x=div10_epu64(x,&rem);
             u64 r[4];
             _mm256_storeu_si256((__m256i*)r,rem);
-            for(int b=0;b<4;b++) digits[b][j]=r[b]|48;
+            for(int b=0;b<4;b++)digits[b][j]=r[b]|48;
         }
-        for(int b=3;b>=0;b--)              // C[i]가 최상위이므로 b=3부터 역순 출력
+        for(int b=3;b>=0;b--)             //C[i]가 최상위이므로 b=3부터 역순 출력
             for(j=0;j<DIG;j++)
                 io_buf[idx++]=(char)digits[b][j];
     }
-    for(; i>=0; --i){                      // 4개 미만 남은 나머지는 스칼라
+    for(;i>=0;--i){                     //4개 미만 남은 나머지는 스칼라
         u32 x=C[i];
         for(j=DIG-1;j>=0;j--){
             io_buf[idx+j]=(x%10)|48;
@@ -298,7 +295,7 @@ int main(){
         idx+=DIG;
     }
     int start=0;
-    while(io_buf[start]=='0' && start<idx-1) start++;
+    while(io_buf[start]=='0'&&start<idx-1)start++;
     fwrite(io_buf+start,1,idx-start,stdout);
 #else
     idx=0;
