@@ -1,5 +1,7 @@
 #define DEBUG 0
 #define BARRET 0
+#define SMID 1
+//설정
 #ifndef _MEMORY_H
 #define _MEMORY_H
 #include<string.h>
@@ -20,7 +22,7 @@
 #endif 
 #include<omp.h>
 #pragma GCC optimize("O3,unroll-loops")
-#pragma GCC target("sse,sse2,sse3,ssse3,sse4,avx,avx2,fma")
+#pragma GCC target("avx,avx2,fma")
 #define u32 unsigned int
 #define u64 unsigned long long
 #define u128 __uint128_t
@@ -54,6 +56,16 @@ static __inline u32 modular1(u128 x){
 static __inline u32 modular2(u128 x){
     u32 ret=((u128)x*x2)>>k;
     return x-ret*mod2;
+}
+#endif
+#ifdef SMID
+static __inline __m256i div10_epu64(__m256i x, __m256i *rem){
+    const __m256i magic=_mm256_set1_epi64x(0xCCCCCCCDULL);
+    const __m256i ten=_mm256_set1_epi64x(10);
+    __m256i q=_mm256_srli_epi64(_mm256_mul_epu32(x,magic),35); // x < 2^32 이므로 그대로 적용
+    __m256i q10=_mm256_mul_epu32(q,ten);                       // q*10 < 10^6, exact
+    *rem=_mm256_sub_epi64(x,q10);
+    return q;
 }
 #endif
 static __inline u32 powmod1(u32 n,u32 e){
@@ -261,8 +273,24 @@ int main(){
     while(carry)
         C[nc++]=carry%BASE,carry/=BASE;
     while(nc>1&&C[nc-1]==0)nc--;
+#if SMID==1
     idx=0;
-    for(i=nc-1;i>=0;--i){
+    i=nc-1;
+    for(; i-3>=0; i-=4){
+        __m256i x=_mm256_loadu_si256((__m256i*)&C[i-3]); // 레인0=C[i-3](하위)...레인3=C[i](상위)
+        u64 digits[4][DIG];
+        for(j=DIG-1;j>=0;j--){
+            __m256i rem;
+            x=div10_epu64(x,&rem);
+            u64 r[4];
+            _mm256_storeu_si256((__m256i*)r,rem);
+            for(int b=0;b<4;b++) digits[b][j]=r[b]|48;
+        }
+        for(int b=3;b>=0;b--)              // C[i]가 최상위이므로 b=3부터 역순 출력
+            for(j=0;j<DIG;j++)
+                io_buf[idx++]=(char)digits[b][j];
+    }
+    for(; i>=0; --i){                      // 4개 미만 남은 나머지는 스칼라
         u32 x=C[i];
         for(j=DIG-1;j>=0;j--){
             io_buf[idx+j]=(x%10)|48;
@@ -273,6 +301,20 @@ int main(){
     int start=0;
     while(io_buf[start]=='0' && start<idx-1) start++;
     fwrite(io_buf+start,1,idx-start,stdout);
+#else
+    idx=0;
+    for(i=nc-1;i>=0;--i){
+        u32 x=C[i];
+        for(j=DIG-1;j>=0;j--){
+            io_buf[idx+j]=(x%10)|48;
+            x/=10;
+        }
+        idx+=DIG;
+    }
+    int start=0;
+    while(io_buf[start]=='0'&&start<idx-1)start++;
+    fwrite(io_buf+start,1,idx-start,stdout);
+#endif
 #ifdef __linux__
     munmap(buf,st.st_size);
 #endif
