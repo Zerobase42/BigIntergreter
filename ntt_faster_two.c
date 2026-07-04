@@ -87,6 +87,40 @@ static __inline void parse_blocks_simd(char*buf,int hi,int lo,u32*out,int*idx){
         out[(*idx)++]=r;
     }
 }
+
+// barret to shorter code can!
+static __inline __m128i mulmod_epu32x4(__m128i av,__m128i bv,u32 mod){
+    const __m256d inv_modd=_mm256_set1_pd(1.0/(double)mod);
+    const __m256i modvec64=_mm256_set1_epi64x(mod);
+
+    __m256d da=_mm256_cvtepi32_pd(av);        // av<mod<2^30 이므로 double 변환은 정확
+    __m256d db=_mm256_cvtepi32_pd(bv);
+    __m256d prod=_mm256_mul_pd(da,db);        // 근사값(최대 2^60, double 53비트라 반올림 오차 있음 - 몫 추정에만 사용)
+    __m256d q_d=_mm256_floor_pd(_mm256_mul_pd(prod,inv_modd));
+    __m128i q=_mm256_cvttpd_epi32(q_d);       // 근사 몫 (±1 오차 가능)
+
+    __m256i awide=_mm256_cvtepu32_epi64(av);  // 정확한 4x64 확장
+    __m256i bwide=_mm256_cvtepu32_epi64(bv);
+    __m256i prod_exact=_mm256_mul_epu32(awide,bwide); // 정확한 4x64비트 곱 (av[i]*bv[i])
+
+    __m256i qwide=_mm256_cvtepu32_epi64(q);
+    __m256i qmod=_mm256_mul_epu32(qwide,modvec64);    // 정확한 q*mod
+    __m256i r=_mm256_sub_epi64(prod_exact,qmod);      // 정확한 나머지 추정 (오차로 [-mod,2mod) 범위 가능)
+
+    for(int rep=0;rep<2;rep++){
+        __m256i ge=_mm256_cmpgt_epi64(r,_mm256_sub_epi64(modvec64,_mm256_set1_epi64x(1)));
+        r=_mm256_sub_epi64(r,_mm256_and_si256(ge,modvec64));
+    }
+    for(int rep=0;rep<2;rep++){
+        __m256i lt0=_mm256_cmpgt_epi64(_mm256_setzero_si256(),r);
+        r=_mm256_add_epi64(r,_mm256_and_si256(lt0,modvec64));
+    }
+
+    const __m256i shuf_idx=_mm256_setr_epi32(0,2,4,6,1,3,5,7);
+    __m256i packed=_mm256_permutevar8x32_epi32(r,shuf_idx); // 8x32 뷰에서 각 64비트 레인의 하위32비트만 모음
+    return _mm256_castsi256_si128(packed);
+}
+
 static __inline __m256i div10_epu32(__m256i x,__m256i*rem){
     const __m256i magic=_mm256_set1_epi32((int)0xCCCCCCCD);
     const __m256i ten=_mm256_set1_epi32(10);
@@ -198,10 +232,21 @@ static __inline void conv1(u32*c,int n){
 #endif
     ntt1(a,n);
     ntt1(b,n);
+#if SMID==1
+    int i=0;
+    for(;i+4<=n;i+=4){
+        __m128i av=_mm_loadu_si128((__m128i*)&a[i]);
+        __m128i bv=_mm_loadu_si128((__m128i*)&b[i]);
+        __m128i cv=mulmod_epu32x4(av,bv,mod1);   // conv2에서는 mod2
+        _mm_storeu_si128((__m128i*)&c[i],cv);
+    }
+    for(;i<n;i++) c[i]=(u64)a[i]*b[i]%mod1;      // 4개 미만 나머지
+#else
     #pragma omp parallel for
     for(int i=0;i<n;i++){
         c[i]=(u64)a[i]*b[i]%mod1;
     }
+#endif
     init_root1(n,1);
     ntt1(c,n);
     u32 t=powmod1(n,mod1-2);
@@ -226,10 +271,21 @@ static __inline void conv2(u32*c,int n){
 #endif
     ntt2(a,n);
     ntt2(b,n);
+#if SMID==1
+    int i=0;
+    for(;i+4<=n;i+=4){
+        __m128i av=_mm_loadu_si128((__m128i*)&a[i]);
+        __m128i bv=_mm_loadu_si128((__m128i*)&b[i]);
+        __m128i cv=mulmod_epu32x4(av,bv,mod2);   // conv2에서는 mod2
+        _mm_storeu_si128((__m128i*)&c[i],cv);
+    }
+    for(;i<n;i++) c[i]=(u64)a[i]*b[i]%mod2;      // 4개 미만 나머지
+#else
     #pragma omp parallel for
     for(int i=0;i<n;i++){
         c[i]=(u64)a[i]*b[i]%mod2;
     }
+#endif
     init_root2(n,1);
     ntt2(c,n);
     u32 t=powmod2(n,mod2-2);
@@ -256,10 +312,24 @@ int main(){
     for(len=p;buf[len]&16;len++);
     int la=mid,lb=len-p;
     na=(la+DIG-1)/DIG,nb=(lb+DIG-1)/DIG;
+#ifdef SMID==1
     idx=0;
     parse_blocks_simd(buf,la,0,A,&idx);
     idx=0;
     parse_blocks_simd(buf,len,p,B,&idx);
+#else
+    for(i=la;i>0;i-=DIG){
+        l=max(0,i-DIG);r=0;
+        for(j=l;j<i;j++)r=r*10+(buf[j]-'0');
+        A[idx++]=r;
+    }
+    idx=0;
+    for(i=len;i>p;i-=DIG){
+        l=max(p,i-DIG);r=0;
+        for(j=l;j<i;j++)r=r*10+(buf[j]-'0');
+        B[idx++]=r;
+    }
+#endif
     if((na==1&&A[0]==0)||(nb==1&&B[0]==0)){
         fwrite((char*)"0",1,1,stdout);
         return 0;
