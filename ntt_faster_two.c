@@ -1,8 +1,7 @@
-#define DEBUG 0
+#define DEBUG 1
 #define BARRET 1
 #define SIMD 0
 #define NTT_SIMD 1
-//설정
 #ifdef __cplusplus
 #define const constexpr
 #endif
@@ -50,8 +49,10 @@ static const u64 mu2=(u64)(((u128)1<<64)/mod2);
 static const u32 mu1_lo=(u32)mu1,mu1_hi=(u32)(mu1>>32);
 static const u32 mu2_lo=(u32)mu2,mu2_hi=(u32)(mu2>>32);
 #endif
-alignas(32)static u32 root[MAX>>1],rev[MAX],lastRev,a[MAX],b[MAX],c1[MAX],c2[MAX],A[MAX],B[MAX],C[MAX];
-alignas(32)static u32 twid1[MAX>>1],twid2[MAX>>1];
+#if SIMD==1
+alignas(32)
+#endif
+static u32 root[MAX>>1],rev[MAX],lastRev,a[MAX],b[MAX],c1[MAX],c2[MAX],A[MAX],B[MAX],C[MAX],twid1[MAX>>1],twid2[MAX>>1];
 static char io_buf[(NUMLEN<<1)+5],tmp[20];
 u32 na,nb;
 #if SIMD==1
@@ -96,7 +97,7 @@ static __attribute__((always_inline))__inline __m128i mulmod_simd_epu32x4(__m128
     __m256i p2=_mm256_mul_epu32(xh,ylv);
     __m256i p3=_mm256_mul_epu32(xh,yhv);
     __m256i mid=_mm256_add_epi64(_mm256_add_epi64(p1,p2),_mm256_srli_epi64(p0,32));
-    __m256i q =_mm256_add_epi64(p3,_mm256_srli_epi64(mid,32));
+    __m256i q=_mm256_add_epi64(p3,_mm256_srli_epi64(mid,32));
     __m256i modvec=_mm256_set1_epi64x(mod);
     __m256i qmod=_mm256_mul_epu32(q,modvec);
     __m256i r=_mm256_sub_epi64(prod,qmod);
@@ -111,7 +112,7 @@ static __attribute__((always_inline))__inline __m128i mulmod_simd_epu32x4(__m128
 #define MULMOD1(av,bv)mulmod_simd_epu32x4(av,bv,mod1,mu1_lo,mu1_hi)
 #define MULMOD2(av,bv)mulmod_simd_epu32x4(av,bv,mod2,mu2_lo,mu2_hi)
 #else
-static __attribute__((always_inline)) inline __m128i mulmod_epu32x4(__m128i av, __m128i bv, u32 mod) {
+static __attribute__((always_inline))inline __m128i mulmod_epu32x4(__m128i av,__m128i bv,u32 mod){
     const __m256d inv_modd=_mm256_set1_pd(1.0/(double)mod);
     const __m256i modvec64=_mm256_set1_epi64x(mod);
     __m256d da=_mm256_cvtepi32_pd(av);
@@ -370,6 +371,7 @@ static inline void conv2(u32*c,int n){
     }
 }
 int main(){
+    debug("SMID=%d,NTT_SIMD=%d,BARRET=%d\n",SIMD,NTT_SIMD,BARRET);
     int mid=0,idx=0,p,r,i,j,l,len;
 #ifdef __linux__
     struct stat st;
@@ -405,6 +407,13 @@ int main(){
         B[idx++]=r;
     }
 #endif
+#if DEBUG==1
+    debug("A=");
+    for(i=0;i<na;i++)debug("%d ",A[i]);
+    debug("\nB=");
+    for(i=0;i<nb;i++)debug("%d ",B[i]);
+    debug("\n");
+#endif
     if((na==1&&A[0]==0)||(nb==1&&B[0]==0)){
         fwrite((char*)"0",1,1,stdout);
         return 0;
@@ -422,6 +431,14 @@ int main(){
         }
         conv1(c1,N);
         conv2(c2,N);
+#if DEBUG==1
+        debug("c1=");
+        for(i=0;i<na;i++)debug("%d ",c1[i]);
+        debug("\nc2=");
+        for(i=0;i<nb;i++)debug("%d ",c2[i]);
+        debug("\n");
+#endif
+        debug("C=");
         for(int i=0;i<nc;i++){
             u32 x=c1[i],y=c2[i];
             u32 z=y+mod2-x;
@@ -430,9 +447,11 @@ int main(){
             carry+=(u64)x+(u64)mod1*k;
             C[i]=carry%BASE;
             carry/=BASE;
+            debug("%d ",C[i]);
         }
         while(carry)
-            C[nc++]=carry%BASE,carry/=BASE;
+            C[nc++]=carry%BASE,carry/=BASE,debug("%d ",C[nc-1]);
+        debug("\n");
     }
     while(nc>1&&C[nc-1]==0)nc--;
 #if SIMD==1
@@ -441,16 +460,13 @@ int main(){
     for(;i-7>=0;i-=8){
         __m256i x=_mm256_loadu_si256((__m256i*)&C[i-7]);
         u32 digits[8][DIG];
-        //unroll-loops
         for(j=DIG-1;j>=0;j--){
             __m256i rem;
             x=div10_epu32(x,&rem);
             u32 r[8];
             _mm256_storeu_si256((__m256i*)r,rem);
-            //unroll-loops
             for(int b=0;b<8;b++)digits[b][j]=r[b]|48;
         }
-        //unroll-loops
         for(int b=7;b>=0;b--)
             for(j=0;j<DIG;j++)
                 io_buf[idx++]=digits[b][j];

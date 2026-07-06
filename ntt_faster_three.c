@@ -1,8 +1,7 @@
-#define DEBUG 0
+#define DEBUG 1
 #define BARRET 1
-#define SIMD 0
+#define SIMD 1
 #define NTT_SIMD 1
-//설정
 #ifdef __cplusplus
 #define const constexpr
 #endif
@@ -39,7 +38,7 @@
 #define BASE 1000000
 #define MAX 1048576
 const u32 w1=3,w2=3,w3=3,mod1=998244353,mod2=1004535809,mod3=469762049;
-const u32 inv_mod1=669690699,inv_mod2=669690699,inv_mod3=669690699,k=93;
+const u32 inv_mod1=669690699,k=93;
 #if BARRET==1
 static const u64 mu1=(u64)(((u128)1<<64)/mod1);
 static const u64 mu2=(u64)(((u128)1<<64)/mod2);
@@ -48,8 +47,10 @@ static const u32 mu1_lo=(u32)mu1,mu1_hi=(u32)(mu1>>32);
 static const u32 mu2_lo=(u32)mu2,mu2_hi=(u32)(mu2>>32);
 static const u32 mu3_lo=(u32)mu3,mu3_hi=(u32)(mu3>>32);
 #endif
-alignas(32)static u32 root[MAX>>1],rev[MAX],lastRev,a[MAX],b[MAX],c1[MAX],c2[MAX],c3[MAX],A[MAX],B[MAX],C[MAX];
-alignas(32)static u32 twid1[MAX>>1],twid2[MAX>>1],twid3[MAX>>1];
+#if SIMD==1
+alignas(32)
+#endif
+static u32 root[MAX>>1],rev[MAX],lastRev,a[MAX],b[MAX],c1[MAX],c2[MAX],c3[MAX],A[MAX],B[MAX],C[MAX],twid1[MAX>>1],twid2[MAX>>1],twid3[MAX>>1];
 static char io_buf[(NUMLEN<<1)+5],tmp[20];
 u32 na,nb;
 #ifdef SIMD
@@ -94,7 +95,7 @@ static __attribute__((always_inline))__inline __m128i mulmod_simd_epu32x4(__m128
     __m256i p2=_mm256_mul_epu32(xh,ylv);
     __m256i p3=_mm256_mul_epu32(xh,yhv);
     __m256i mid=_mm256_add_epi64(_mm256_add_epi64(p1,p2),_mm256_srli_epi64(p0,32));
-    __m256i q =_mm256_add_epi64(p3,_mm256_srli_epi64(mid,32));
+    __m256i q=_mm256_add_epi64(p3,_mm256_srli_epi64(mid,32));
     __m256i modvec=_mm256_set1_epi64x(mod);
     __m256i qmod=_mm256_mul_epu32(q,modvec);
     __m256i r=_mm256_sub_epi64(prod,qmod);
@@ -110,7 +111,7 @@ static __attribute__((always_inline))__inline __m128i mulmod_simd_epu32x4(__m128
 #define MULMOD2(av,bv)mulmod_simd_epu32x4(av,bv,mod2,mu2_lo,mu2_hi)
 #define MULMOD3(av,bv)mulmod_simd_epu32x4(av,bv,mod3,mu3_lo,mu3_hi)
 #else
-static __attribute__((always_inline)) inline __m128i mulmod_epu32x4(__m128i av, __m128i bv, u32 mod) {
+static __attribute__((always_inline))inline __m128i mulmod_epu32x4(__m128i av,__m128i bv,u32 mod){
     const __m256d inv_modd=_mm256_set1_pd(1.0/(double)mod);
     const __m256i modvec64=_mm256_set1_epi64x(mod);
     __m256d da=_mm256_cvtepi32_pd(av);
@@ -202,7 +203,6 @@ static __attribute__((always_inline))inline void init_root3(int n,unsigned char 
         root[i]=(u64)root[i-1]*ang%mod3;
     }
 }
-
 static inline void ntt1(u32*f,int n){
 #pragma omp parallel for
     for(int i=1;i<n-1;i+=2){
@@ -362,7 +362,6 @@ static inline void ntt3(u32*f,int n){
         step>>=1;
     }
 }
-
 static inline void conv1(u32*c,int n){
     init_root1(n,0);
 #ifdef _MEMORY_H
@@ -480,8 +479,8 @@ static inline void conv3(u32*c,int n){
         c[i]=(u64)c[i]*t%mod3;
     }
 }
-
 int main(){
+    debug("SMID=%d,NTT_SIMD=%d,BARRET=%d\n",SIMD,NTT_SIMD,BARRET);
     int mid=0,idx=0,p,r,i,j,l,len;
 #ifdef __linux__
     struct stat st;
@@ -519,13 +518,20 @@ int main(){
         B[idx++]=r;
     }
 #endif
+#if DEBUG==1
+    debug("A=");
+    for(i=0;i<na;i++)debug("%d ",A[i]);
+    debug("\nB=");
+    for(i=0;i<nb;i++)debug("%d ",B[i]);
+    debug("\n");
+#endif
     if((na==1&&A[0]==0)||(nb==1&&B[0]==0)){
         fwrite((char*)"0",1,1,stdout);
         return 0;
     }
     int nc=na+nb-1;
-    u64 carry=0;
-    {//conv
+    {
+        u64 carry=0;
         int clz=__builtin_clz(nc-1);
         int e=32-clz,N=1<<e;
         if(lastRev!=N){
@@ -537,47 +543,50 @@ int main(){
         conv1(c1,N);
         conv2(c2,N);
         conv3(c3,N);
-
-        const u128 mod12 = 1002772198720536577U;  // mod1 * mod2
-        const u64 mod1_INV_mod2 = 669690699;      // mod1^{-1} mod mod2
-        const u64 mod12_INV_mod3 = 354521948;     // (mod1*mod2)^{-1} mod mod3
+#if DEBUG==1
+        debug("c1=");
+        for(i=0;i<na;i++)debug("%d ",c1[i]);
+        debug("\nc2=");
+        for(i=0;i<nb;i++)debug("%d ",c2[i]);
+        debug("\nc3=");
+        for(i=0;i<nc;i++)debug("%d ",c3[i]);
+        debug("\n");
+#endif
+        const u128 mod12=(u128)mod1*mod2;    
+        const u64 mod1_INV_mod2=669690699;     
+        const u64 mod12_INV_mod3=354521948;    
+        debug("C=");
         for(int i=0;i<nc;i++){
-            u64 x1 = c1[i];
-
-            u64 t = ((c2[i] - x1) % mod2 + mod2) % mod2;
-            t = (u128)t * mod1_INV_mod2 % mod2;
-
-            u128 x12 = (u128)x1 + (u128)t * mod1;
-
-            u64 r = (u64)(x12 % mod3);
-            u64 u = ((c3[i] - r) % mod3 + mod3) % mod3;
-            u = (u128)u * mod12_INV_mod3 % mod3;
-
-            carry+= x12 + (u128)u * mod12;
-            C[i] = carry % BASE;
-            carry /= BASE;
+            u64 x1=c1[i];
+            u64 t=((c2[i]-x1)%mod2+mod2)%mod2;
+            t=(u128)t*mod1_INV_mod2%mod2;
+            u128 x12=(u128)x1+(u128)t*mod1;
+            u64 r=(u64)(x12%mod3);
+            u64 u=((c3[i]-r)%mod3+mod3)%mod3;
+            u=(u128)u*mod12_INV_mod3%mod3;
+            carry+=x12+(u128)u*mod12;
+            C[i]=carry%BASE;
+            carry/=BASE;
+            debug("%d ",C[i]);
         }
-
+        debug("\n");
         while(carry)
             C[nc++]=carry%BASE,carry/=BASE;
     }
     while(nc>1&&C[nc-1]==0)nc--;
-#if SIMD==1
     idx=0;
     i=nc-1;
+#if SIMD==1
     for(;i-7>=0;i-=8){
         __m256i x=_mm256_loadu_si256((__m256i*)&C[i-7]);
         u32 digits[8][DIG];
-        //unrou64-loops
         for(j=DIG-1;j>=0;j--){
             __m256i rem;
             x=div10_epu32(x,&rem);
             u32 r[8];
             _mm256_storeu_si256((__m256i*)r,rem);
-            //unrou64-loops
             for(int b=0;b<8;b++)digits[b][j]=r[b]|48;
         }
-        //unrou64-loops
         for(int b=7;b>=0;b--)
             for(j=0;j<DIG;j++)
                 io_buf[idx++]=digits[b][j];
@@ -594,8 +603,7 @@ int main(){
     while(io_buf[start]=='0'&&start<idx-1)start++;
     fwrite(io_buf+start,1,idx-start,stdout);
 #else
-    idx=0;
-    for(i=nc-1;i>=0;--i){
+    for(;i>=0;--i){
         u32 x=C[i];
         for(j=DIG-1;j>=0;j--){
             io_buf[idx+j]=(x%10)|48;
