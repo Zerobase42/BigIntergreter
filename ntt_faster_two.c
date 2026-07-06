@@ -1,5 +1,5 @@
 #define DEBUG 1
-#define BARRET 1
+#define BARRET 0
 #define SIMD 0
 #define NTT_SIMD 1
 #ifdef __cplusplus

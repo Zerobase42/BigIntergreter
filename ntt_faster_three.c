@@ -1,7 +1,7 @@
-#define DEBUG 1
-#define BARRET 1
-#define SIMD 1
-#define NTT_SIMD 1
+#define DEBUG 0
+#define BARRET 0
+#define SIMD 0
+#define NTT_SIMD 0
 #ifdef __cplusplus
 #define const constexpr
 #endif
