@@ -37,12 +37,7 @@
 #define NUMLEN 1000000
 #define BASE 1000000
 #define MAX 1048576
-#ifdef __cplusplus
-constexpr
-#else
-const
-#endif
-u32 w1=3,w2=3,mod1=998244353,mod2=1004535809,inv_mod1=669690699,k=93;
+const u32 w1=3,w2=3,mod1=998244353,mod2=1004535809,inv_mod1=669690699,k=93;
 #if BARRET==1
 static const u64 mu1=(u64)(((u128)1<<64)/mod1);
 static const u64 mu2=(u64)(((u128)1<<64)/mod2);
@@ -203,16 +198,15 @@ static inline void ntt1(u32*f,int n){
     int step=n>>1;
     for(int len=2;len<=n;len<<=1){
         int half=len>>1;
-#if SIMD==1&&NTT_SIMD==1
-        for(int k=0;k<half;k++)twid1[k]=root[step*k];
-#endif
         for(int j=0;j<n;j+=len){
             int k=0;
 #if SIMD==1&&NTT_SIMD==1
             const __m128i modvec=_mm_set1_epi32(mod1);
             const __m128i one=_mm_set1_epi32(1);
             for(;k+4<=half;k+=4){
-                __m128i rootv=_mm_load_si128((__m128i*)&twid1[k]);
+                __m128i rootv=_mm_set_epi32(
+                    root[step*(k+3)],root[step*(k+2)],
+                    root[step*(k+1)],root[step*k]);
                 __m128i uvec=_mm_load_si128((__m128i*)&f[j+k]);
                 __m128i vraw=_mm_load_si128((__m128i*)&f[j+k+half]);
                 __m128i vvec=MULMOD1(vraw,rootv);
@@ -256,16 +250,15 @@ static inline void ntt2(u32*f,int n){
     int step=n>>1;
     for(int len=2;len<=n;len<<=1){
         int half=len>>1;
-#if SIMD==1&&NTT_SIMD==1
-        for(int k=0;k<half;k++)twid2[k]=root[step*k];
-#endif
         for(int j=0;j<n;j+=len){
             int k=0;
 #if SIMD==1&&NTT_SIMD==1
             const __m128i modvec=_mm_set1_epi32(mod2);
             const __m128i one=_mm_set1_epi32(1);
             for(;k+4<=half;k+=4){
-                __m128i rootv=_mm_load_si128((__m128i*)&twid2[k]);
+                __m128i rootv=_mm_set_epi32(
+                    root[step*(k+3)],root[step*(k+2)],
+                    root[step*(k+1)],root[step*k]);
                 __m128i uvec=_mm_load_si128((__m128i*)&f[j+k]);
                 __m128i vraw=_mm_load_si128((__m128i*)&f[j+k+half]);
                 __m128i vvec=MULMOD2(vraw,rootv);
@@ -420,7 +413,12 @@ int main(){
     }
     int nc=na+nb-1;
     u64 carry=0;
-    {
+    if(na==1 && nb==1){
+        u64 prod=(u64)A[0]*B[0];
+        C[0]=(u32)(prod%BASE);
+        nc=1;
+        if(prod/BASE){C[nc++]=(u32)(prod/BASE);}
+    }else{
         int clz=__builtin_clz(nc-1);
         int e=32-clz,N=1<<e;
         if(lastRev!=N){

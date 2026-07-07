@@ -1,10 +1,7 @@
-#define DEBUG 0
-#define BARRET 0
-#define SIMD 0
-#define NTT_SIMD 0
-#ifdef __cplusplus
-#define const constexpr
-#endif
+#define DEBUG 1
+#define BARRET 1
+#define SIMD 1
+#define NTT_SIMD 1
 #if SIMD==1
 #include<stdalign.h>
 #endif
@@ -29,17 +26,36 @@
 #include<omp.h>
 #pragma GCC optimize("O3,unroll-loops")
 #pragma GCC target("avx,avx2,fma")
+#ifdef __cplusplus
+#define const constexpr
+#endif
 #define u32 unsigned int
 #define u64 unsigned long long
 #define u128 __uint128_t
 #define max(a,b)((a)>(b)?(a):(b))
-#define DIG 6
+#define DIG 8
 #define NUMLEN 1000000
-#define BASE 1000000
+#define BASE 100000000
 #define MAX 1048576
 const u32 w1=3,w2=3,w3=3,mod1=998244353,mod2=1004535809,mod3=469762049;
-const u32 inv_mod1=669690699,k=93;
+#ifdef __cplusplus
+constexpr u32 pwmd(u32 n,u32 e,u32 mod){
+    u32 ret=1;
+    while(e){
+        if(e&1)ret=(u64)ret*n%mod;
+        e>>=1;
+        n=(u64)n*n%mod;
+    }
+    return ret;
+}
+constexpr u64 mod12=(u64)mod1*mod2;
+constexpr u32 inv_mod1=pwmd(mod1,mod2-2,mod2),mod12_INV_mod3=pwmd(mod12,mod3-2,mod3);
+#else
+const u32 inv_mod1=669690699,mod12_INV_mod3=354521948;
+const u128 mod12=1002772198720536577ULL;
+#endif
 #if BARRET==1
+const u32 k=93;
 static const u64 mu1=(u64)(((u128)1<<64)/mod1);
 static const u64 mu2=(u64)(((u128)1<<64)/mod2);
 static const u64 mu3=(u64)(((u128)1<<64)/mod3);
@@ -47,10 +63,11 @@ static const u32 mu1_lo=(u32)mu1,mu1_hi=(u32)(mu1>>32);
 static const u32 mu2_lo=(u32)mu2,mu2_hi=(u32)(mu2>>32);
 static const u32 mu3_lo=(u32)mu3,mu3_hi=(u32)(mu3>>32);
 #endif
+#undef const
 #if SIMD==1
 alignas(32)
 #endif
-static u32 root[MAX>>1],rev[MAX],lastRev,a[MAX],b[MAX],c1[MAX],c2[MAX],c3[MAX],A[MAX],B[MAX],C[MAX],twid1[MAX>>1],twid2[MAX>>1],twid3[MAX>>1];
+static u32 root[MAX>>1],rev[MAX],lastRev,a[MAX],b[MAX],c1[MAX],c2[MAX],c3[MAX],A[MAX],B[MAX],C[MAX];
 static char io_buf[(NUMLEN<<1)+5],tmp[20];
 u32 na,nb;
 #ifdef SIMD
@@ -220,16 +237,15 @@ static inline void ntt1(u32*f,int n){
     int step=n>>1;
     for(int len=2;len<=n;len<<=1){
         int half=len>>1;
-#if SIMD==1&&NTT_SIMD==1
-        for(int k=0;k<half;k++)twid1[k]=root[step*k];
-#endif
         for(int j=0;j<n;j+=len){
             int k=0;
 #if SIMD==1&&NTT_SIMD==1
             const __m128i modvec=_mm_set1_epi32(mod1);
             const __m128i one=_mm_set1_epi32(1);
             for(;k+4<=half;k+=4){
-                __m128i rootv=_mm_load_si128((__m128i*)&twid1[k]);
+                __m128i rootv=_mm_set_epi32(
+                    root[step*(k+3)],root[step*(k+2)],
+                    root[step*(k+1)],root[step*k]);
                 __m128i uvec=_mm_load_si128((__m128i*)&f[j+k]);
                 __m128i vraw=_mm_load_si128((__m128i*)&f[j+k+half]);
                 __m128i vvec=MULMOD1(vraw,rootv);
@@ -273,16 +289,15 @@ static inline void ntt2(u32*f,int n){
     int step=n>>1;
     for(int len=2;len<=n;len<<=1){
         int half=len>>1;
-#if SIMD==1&&NTT_SIMD==1
-        for(int k=0;k<half;k++)twid2[k]=root[step*k];
-#endif
         for(int j=0;j<n;j+=len){
             int k=0;
 #if SIMD==1&&NTT_SIMD==1
             const __m128i modvec=_mm_set1_epi32(mod2);
             const __m128i one=_mm_set1_epi32(1);
             for(;k+4<=half;k+=4){
-                __m128i rootv=_mm_load_si128((__m128i*)&twid2[k]);
+                __m128i rootv=_mm_set_epi32(
+                    root[step*(k+3)],root[step*(k+2)],
+                    root[step*(k+1)],root[step*k]);
                 __m128i uvec=_mm_load_si128((__m128i*)&f[j+k]);
                 __m128i vraw=_mm_load_si128((__m128i*)&f[j+k+half]);
                 __m128i vvec=MULMOD2(vraw,rootv);
@@ -326,16 +341,15 @@ static inline void ntt3(u32*f,int n){
     int step=n>>1;
     for(int len=2;len<=n;len<<=1){
         int half=len>>1;
-#if SIMD==1&&NTT_SIMD==1
-        for(int k=0;k<half;k++)twid3[k]=root[step*k];
-#endif
         for(int j=0;j<n;j+=len){
             int k=0;
 #if SIMD==1&&NTT_SIMD==1
             const __m128i modvec=_mm_set1_epi32(mod3);
             const __m128i one=_mm_set1_epi32(1);
             for(;k+4<=half;k+=4){
-                __m128i rootv=_mm_load_si128((__m128i*)&twid3[k]);
+                __m128i rootv=_mm_set_epi32(
+                    root[step*(k+3)],root[step*(k+2)],
+                    root[step*(k+1)],root[step*k]);
                 __m128i uvec=_mm_load_si128((__m128i*)&f[j+k]);
                 __m128i vraw=_mm_load_si128((__m128i*)&f[j+k+half]);
                 __m128i vvec=MULMOD3(vraw,rootv);
@@ -530,8 +544,12 @@ int main(){
         return 0;
     }
     int nc=na+nb-1;
-    {
-        u64 carry=0;
+    if(na==1 && nb==1){
+        u64 prod=(u64)A[0]*B[0];
+        C[0]=(u32)(prod%BASE);
+        nc=1;
+        if(prod/BASE){C[nc++]=(u32)(prod/BASE);}
+    }else{
         int clz=__builtin_clz(nc-1);
         int e=32-clz,N=1<<e;
         if(lastRev!=N){
@@ -552,19 +570,17 @@ int main(){
         for(i=0;i<nc;i++)debug("%d ",c3[i]);
         debug("\n");
 #endif
-        const u128 mod12=(u128)mod1*mod2;    
-        const u64 mod1_INV_mod2=669690699;     
-        const u64 mod12_INV_mod3=354521948;    
+        u128 carry=0;
         debug("C=");
         for(int i=0;i<nc;i++){
             u64 x1=c1[i];
-            u64 t=((c2[i]-x1)%mod2+mod2)%mod2;
-            t=(u128)t*mod1_INV_mod2%mod2;
+            u64 t=(c2[i]>=x1)?(c2[i]-x1):(c2[i]+mod2-x1);   // 언더플로우 없이 안전하게 [0,mod2) 확보
+            t=(u128)t*inv_mod1%mod2;
             u128 x12=(u128)x1+(u128)t*mod1;
-            u64 r=(u64)(x12%mod3);
-            u64 u=((c3[i]-r)%mod3+mod3)%mod3;
+            u64 r = (u64)(x12 % mod3);
+            u64 u=(c3[i]>=r)?(c3[i]-r):(c3[i]+mod3-r);       // 동일하게 수정
             u=(u128)u*mod12_INV_mod3%mod3;
-            carry+=x12+(u128)u*mod12;
+            carry+=x12+mod12*u;
             C[i]=carry%BASE;
             carry/=BASE;
             debug("%d ",C[i]);
