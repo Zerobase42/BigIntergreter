@@ -1,7 +1,8 @@
-#define DEBUG 1
+#define DEBUG 0
 #define BARRET 1
 #define SIMD 1
 #define NTT_SIMD 1
+// T(N)=9Nlog2N+8N+O(1)
 #if SIMD==1
 #include<stdalign.h>
 #endif
@@ -21,7 +22,6 @@
 #include<sys/mman.h>
 #include<sys/stat.h>
 #define fwrite(buf,a,pos,std)write(1,buf,pos)
-#define fwrite(buf,a,pos,std)write(1,buf,pos)
 #endif 
 #include<omp.h>
 #pragma GCC optimize("O3,unroll-loops")
@@ -33,9 +33,9 @@
 #define u64 unsigned long long
 #define u128 __uint128_t
 #define max(a,b)((a)>(b)?(a):(b))
-#define DIG 8
+#define DIG 9
 #define NUMLEN 1000000
-#define BASE 100000000
+#define BASE 1000000000
 #define MAX 1048576
 const u32 w1=3,w2=3,w3=3,mod1=998244353,mod2=1004535809,mod3=469762049;
 #ifdef __cplusplus
@@ -607,30 +607,18 @@ int main(){
             for(j=0;j<DIG;j++)
                 io_buf[idx++]=digits[b][j];
     }
-    for(;i>=0;--i){
-        u32 x=C[i];
-        for(j=DIG-1;j>=0;j--){
-            io_buf[idx+j]=(x%10)|48;
-            x/=10;
-        }
-        idx+=DIG;
-    }
-    int start=0;
-    while(io_buf[start]=='0'&&start<idx-1)start++;
-    fwrite(io_buf+start,1,idx-start,stdout);
-#else
-    for(;i>=0;--i){
-        u32 x=C[i];
-        for(j=DIG-1;j>=0;j--){
-            io_buf[idx+j]=(x%10)|48;
-            x/=10;
-        }
-        idx+=DIG;
-    }
-    int start=0;
-    while(io_buf[start]=='0'&&start<idx-1)start++;
-    fwrite(io_buf+start,1,idx-start,stdout);
 #endif
+    for(;i>=0;--i){
+        u32 x=C[i];
+        for(j=DIG-1;j>=0;j--){
+            io_buf[idx+j]=(x%10)|48;
+            x/=10;
+        }
+        idx+=DIG;
+    }
+    int start=0;
+    while(io_buf[start]=='0'&&start<idx-1)start++;
+    fwrite(io_buf+start,1,idx-start,stdout);
 #ifdef __linux__
     munmap(buf,st.st_size);
 #endif
