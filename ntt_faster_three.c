@@ -88,13 +88,13 @@ static inline void parse_blocks_simd(char*buf,int hi,int lo,u32*out,int*idx){
         }
         u32 r[8];
         _mm256_storeu_si256((__m256i*)r,acc);
-        for(int b=0;b<8;b++)out[(*idx)++]=r[b];
+        for(int b=0;b<8;++b)out[(*idx)++]=r[b];
         i-=8*DIG;
     }
     for(;i>lo;i-=DIG){
         int l=max(lo,i-DIG);
         u32 r=0;
-        for(int j=l;j<i;j++)r=r*10+(buf[j]-'0');
+        for(int j=l;j<i;++j)r=r*10+(buf[j]-'0');
         out[(*idx)++]=r;
     }
 }
@@ -200,7 +200,7 @@ static __attribute__((always_inline))inline void init_root1(int n,unsigned char 
     u32 ang=powmod1(w1,(mod1-1)/n);
     if(inv)ang=powmod1(ang,mod1-2);
     root[0]=1;
-    for(int i=1;i<(n>>1);i++){
+    for(int i=1;i<(n>>1);++i){
         root[i]=(u64)root[i-1]*ang%mod1;
     }
 }
@@ -208,7 +208,7 @@ static __attribute__((always_inline))inline void init_root2(int n,unsigned char 
     u32 ang=powmod2(w2,(mod2-1)/n);
     if(inv)ang=powmod2(ang,mod2-2);
     root[0]=1;
-    for(int i=1;i<(n>>1);i++){
+    for(int i=1;i<(n>>1);++i){
         root[i]=(u64)root[i-1]*ang%mod2;
     }
 }
@@ -216,7 +216,7 @@ static __attribute__((always_inline))inline void init_root3(int n,unsigned char 
     u32 ang=powmod3(w3,(mod3-1)/n);
     if(inv)ang=powmod3(ang,mod3-2);
     root[0]=1;
-    for(int i=1;i<(n>>1);i++){
+    for(int i=1;i<(n>>1);++i){
         root[i]=(u64)root[i-1]*ang%mod3;
     }
 }
@@ -385,7 +385,7 @@ static inline void conv1(u32*c,int n){
     memset(b+nb,0,(n-nb)*sizeof(u32));
 #else
 #pragma omp parallel for
-    for(int i=0;i<n;i++){
+    for(int i=0;i<n;++i){
         a[i]=(i<na)?A[i]:0;
         b[i]=(i<nb)?B[i]:0;
     }
@@ -400,10 +400,10 @@ static inline void conv1(u32*c,int n){
         __m128i cv=MULMOD1(av,bv);
         _mm_storeu_si128((__m128i*)&c[i],cv);
     }
-    for(;i<n;i++)c[i]=(u64)a[i]*b[i]%mod1;
+    for(;i<n;++i)c[i]=(u64)a[i]*b[i]%mod1;
 #else
 #pragma omp parallel for
-    for(int i=0;i<n;i++){
+    for(int i=0;i<n;++i){
         c[i]=(u64)a[i]*b[i]%mod1;
     }
 #endif
@@ -411,7 +411,7 @@ static inline void conv1(u32*c,int n){
     ntt1(c,n);
     u32 t=powmod1(n,mod1-2);
 #pragma omp parallel for
-    for(int i=0;i<n;i++){
+    for(int i=0;i<n;++i){
         c[i]=(u64)c[i]*t%mod1;
     }
 }
@@ -424,7 +424,7 @@ static inline void conv2(u32*c,int n){
     memset(b+nb,0,(n-nb)*sizeof(u32));
 #else
 #pragma omp parallel for
-    for(int i=0;i<n;i++){
+    for(int i=0;i<n;++i){
         a[i]=(i<na)?A[i]:0;
         b[i]=(i<nb)?B[i]:0;
     }
@@ -439,10 +439,10 @@ static inline void conv2(u32*c,int n){
         __m128i cv=MULMOD2(av,bv);
         _mm_storeu_si128((__m128i*)&c[i],cv);
     }
-    for(;i<n;i++)c[i]=(u64)a[i]*b[i]%mod2;
+    for(;i<n;++i)c[i]=(u64)a[i]*b[i]%mod2;
 #else
 #pragma omp parallel for
-    for(int i=0;i<n;i++){
+    for(int i=0;i<n;++i){
         c[i]=(u64)a[i]*b[i]%mod2;
     }
 #endif
@@ -450,7 +450,7 @@ static inline void conv2(u32*c,int n){
     ntt2(c,n);
     u32 t=powmod2(n,mod2-2);
 #pragma omp parallel for
-    for(int i=0;i<n;i++){
+    for(int i=0;i<n;++i){
         c[i]=(u64)c[i]*t%mod2;
     }
 }
@@ -463,7 +463,7 @@ static inline void conv3(u32*c,int n){
     memset(b+nb,0,(n-nb)*sizeof(u32));
 #else
 #pragma omp parallel for
-    for(int i=0;i<n;i++){
+    for(int i=0;i<n;++i){
         a[i]=(i<na)?A[i]:0;
         b[i]=(i<nb)?B[i]:0;
     }
@@ -478,10 +478,10 @@ static inline void conv3(u32*c,int n){
         __m128i cv=MULMOD3(av,bv);
         _mm_storeu_si128((__m128i*)&c[i],cv);
     }
-    for(;i<n;i++)c[i]=(u64)a[i]*b[i]%mod3;
+    for(;i<n;++i)c[i]=(u64)a[i]*b[i]%mod3;
 #else
 #pragma omp parallel for
-    for(int i=0;i<n;i++){
+    for(int i=0;i<n;++i){
         c[i]=(u64)a[i]*b[i]%mod3;
     }
 #endif
@@ -489,7 +489,7 @@ static inline void conv3(u32*c,int n){
     ntt3(c,n);
     u32 t=powmod3(n,mod3-2);
 #pragma omp parallel for
-    for(int i=0;i<n;i++){
+    for(int i=0;i<n;++i){
         c[i]=(u64)c[i]*t%mod3;
     }
 }
@@ -521,22 +521,22 @@ int main(){
     for(i=la;i>0;i-=DIG){
         l=max(0,i-DIG);
         r=0;
-        for(j=l;j<i;j++)r=r*10+(buf[j]-'0');
+        for(j=l;j<i;++j)r=r*10+(buf[j]-'0');
         A[idx++]=r;
     }
     idx=0;
     for(i=len;i>p;i-=DIG){
         l=max(p,i-DIG);
         r=0;
-        for(j=l;j<i;j++)r=r*10+(buf[j]-'0');
+        for(j=l;j<i;++j)r=r*10+(buf[j]-'0');
         B[idx++]=r;
     }
 #endif
 #if DEBUG==1
     debug("A=");
-    for(i=0;i<na;i++)debug("%d ",A[i]);
+    for(i=0;i<na;++i)debug("%d ",A[i]);
     debug("\nB=");
-    for(i=0;i<nb;i++)debug("%d ",B[i]);
+    for(i=0;i<nb;++i)debug("%d ",B[i]);
     debug("\n");
 #endif
     if((na==1&&A[0]==0)||(nb==1&&B[0]==0)){
@@ -553,7 +553,7 @@ int main(){
         int clz=__builtin_clz(nc-1);
         int e=32-clz,N=1<<e;
         if(lastRev!=N){
-            for(int i=1;i<N;i++){
+            for(int i=1;i<N;++i){
                 rev[i]=(rev[i>>1]|(i&1)<<e)>>1;
             }
             lastRev=N;
@@ -563,16 +563,16 @@ int main(){
         conv3(c3,N);
 #if DEBUG==1
         debug("c1=");
-        for(i=0;i<na;i++)debug("%d ",c1[i]);
+        for(i=0;i<na;++i)debug("%d ",c1[i]);
         debug("\nc2=");
-        for(i=0;i<nb;i++)debug("%d ",c2[i]);
+        for(i=0;i<nb;++i)debug("%d ",c2[i]);
         debug("\nc3=");
-        for(i=0;i<nc;i++)debug("%d ",c3[i]);
+        for(i=0;i<nc;++i)debug("%d ",c3[i]);
         debug("\n");
 #endif
         u128 carry=0;
         debug("C=");
-        for(int i=0;i<nc;i++){
+        for(int i=0;i<nc;++i){
             u64 x1=c1[i];
             u64 t=(c2[i]>=x1)?(c2[i]-x1):(c2[i]+mod2-x1);   // 언더플로우 없이 안전하게 [0,mod2) 확보
             t=(u128)t*inv_mod1%mod2;
@@ -589,28 +589,28 @@ int main(){
         while(carry)
             C[nc++]=carry%BASE,carry/=BASE;
     }
-    while(nc>1&&C[nc-1]==0)nc--;
+    while(nc>1&&C[nc-1]==0)--nc;
     idx=0;
     i=nc-1;
 #if SIMD==1
     for(;i-7>=0;i-=8){
         __m256i x=_mm256_loadu_si256((__m256i*)&C[i-7]);
         u32 digits[8][DIG];
-        for(j=DIG-1;j>=0;j--){
+        for(j=DIG-1;j>=0;--j){
             __m256i rem;
             x=div10_epu32(x,&rem);
             u32 r[8];
             _mm256_storeu_si256((__m256i*)r,rem);
-            for(int b=0;b<8;b++)digits[b][j]=r[b]|48;
+            for(int b=0;b<8;++b)digits[b][j]=r[b]|48;
         }
-        for(int b=7;b>=0;b--)
-            for(j=0;j<DIG;j++)
+        for(int b=7;b>=0;--b)
+            for(j=0;j<DIG;++j)
                 io_buf[idx++]=digits[b][j];
     }
 #endif
     for(;i>=0;--i){
         u32 x=C[i];
-        for(j=DIG-1;j>=0;j--){
+        for(j=DIG-1;j>=0;--j){
             io_buf[idx+j]=(x%10)|48;
             x/=10;
         }
